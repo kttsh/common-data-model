@@ -18,6 +18,7 @@
 - `03-authorization/authorization-strategy.md`: 権限制御の論点整理と技術方針。
 - `03-authorization/authorization-boundaries-and-interface.md`: PEP/PDP 責務分担と `authorize()` インターフェースの決定メモ。
 - `03-authorization/row-level-filtering-layering.md`: 行レベル絞り込みをどの層で担うかの整理。
+- `03-authorization/shared-pdp-across-api-and-bigquery.md`: PDP を FastAPI 経路と BigQuery を叩く処理で共用（統一）するための検討メモ。
 
 ## 04 Research
 
