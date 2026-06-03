@@ -27,3 +27,12 @@
 ## 05 Planning
 
 - `05-planning/implementation-roadmap.md`: 直近の設計作業、PoC 範囲、調査バックログ。
+
+## 06 Data Platform
+
+API の元ネタとなる Dataform（→ BigQuery）のリポジトリ戦略・命名・運用・移行をまとめたトピック集約。
+
+- `06-data-platform/repository-strategy.md`: プラットフォーム全体のリポジトリ分割戦略（案 B 確定）・昇格フロー・ブランチ戦略。
+- `06-data-platform/dataform-naming-convention.md`: Dataform の構成・命名規約リファレンス（`sources`/`intermediate`/`outputs` 準拠）。
+- `06-data-platform/dataform-operating-model.md`: Dataform の GCP ネイティブ運用設計（単一リポジトリ＋release configuration オーバーライド）。到達点。
+- `06-data-platform/dataform-migration-plan.md`: あるべき姿への移行手順・トランクベースのブランチステップ。
