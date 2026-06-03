@@ -2,6 +2,7 @@
 
 > Source: split from previous combined API technology research memo.
 > Status: Research memo.
+> **決定**: 本比較を踏まえ、言語・FW は **Python / FastAPI を採用**（2026-06）。決定理由は `../02-architecture/runtime-framework-decision.md` を参照。本メモは選定の根拠となる調査記録として保持する。
 
 ## TL;DR
 - **総合おすすめは「.NET 9 Minimal API」「Python/Litestar(または FastAPI)」「Go/Huma」の3本柱**。.NET は Azure ネイティブ統合と Entra ID / Managed Identity の純正サポートが圧倒的、Litestar は msgspec 由来で Pydantic v2 比 ~12倍速の JSON デコード+バリデーション(jcrist/msgspec 公式ベンチ、CPython 3.11)と OpenAPI 3.1 ネイティブ、Huma は OpenAPI 3.1 ファースト設計と Go 1.22+ 標準 mux 採用で AI 補完との相性が極めて良い。
@@ -19,7 +20,7 @@
 ### FastAPI
 | 観点 | 評価 |
 |---|---|
-| 設計思想 | Starlette + Pydantic v2、ASGI、型ヒント駆動。OpenAPI 自動生成は 3.0.x ベース。OpenAPI 3.1 への完全準拠は依然として段階的。 |
+| 設計思想 | Starlette + Pydantic v2、ASGI、型ヒント駆動。**2026 年時点（0.136 系）では OpenAPI 3.1 がデフォルト出力**（旧来の「3.1 準拠は段階的」評価は解消）。ただし既存 APIM は 3.1 を import 互換のみで扱うため、投入時は 3.0 へダウングロードするのが定石。 |
 | 活発さ | OpenAI / Anthropic / Microsoft / Netflix / Uber などが実運用、エコシステムは Python 最大級。Tiangolo Inc. が商用バックに。 |
 | AI相性 | 学習データが圧倒的。Claude / Copilot / Cursor が最も補完しやすい Python FW。 |
 | Azure | App Service Linux の公式 Python ビルドパックでそのまま動く。`gunicorn -w 4 -k uvicorn.workers.UvicornWorker` パターン。 |
@@ -51,6 +52,8 @@
 
 ### Python 総合所見
 **Litestar が技術的にはベスト**だが、エコシステム成熟度・採用事例・社内学習コストを考慮すると**FastAPI が現実解**。ただし大規模化が見えているならば最初から Litestar を選ぶ価値あり。
+
+> **決定（2026-06）**: 本基盤は応答時間が BigQuery・SQL Server の I/O 待機に支配され、Litestar の生スループット優位が体感に出にくい。AI 支援開発相性・エコシステム成熟度・App Service ネイティブ対応（2026 年強化）を重視し **FastAPI を採用**。詳細は `../02-architecture/runtime-framework-decision.md`。
 
 ---
 

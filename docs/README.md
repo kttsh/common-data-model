@@ -9,8 +9,9 @@
 ## 02 Architecture
 
 - `02-architecture/platform-architecture-decision.md`: 採用済みの基盤アーキテクチャ決定。
+- `02-architecture/runtime-framework-decision.md`: 言語・FW の採用決定（**Python / FastAPI**、D1 クローズ）と 2026 年情報に基づく選定理由。
 - `02-architecture/data-api-builder-assessment.md`: DAB 不採用と App Service / Functions の使い分け。
-- `02-architecture/repository-structure-options.md`: 候補ランタイム別のリポジトリ構造案。
+- `02-architecture/repository-structure-options.md`: 候補ランタイム別のリポジトリ構造案（採用案は #2 Python / FastAPI）。
 
 ## 03 Authorization
 

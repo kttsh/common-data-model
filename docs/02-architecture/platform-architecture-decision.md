@@ -12,6 +12,7 @@
 |---|---|
 | **採用アーキテクチャ** | **案A: 最小構成（App Service + APIM 組込みキャッシュ + プロセス内 LRU + BigQuery ビュー）** |
 | バックエンドランタイム | Azure App Service（Linux 想定） |
+| **言語・フレームワーク** | **Python / FastAPI**（D1 確定 → `runtime-framework-decision.md`） |
 | API ゲートウェイ | 既存共有 Azure API Management |
 | キャッシュ | APIM 組込み（内部）キャッシュ + App Service プロセス内 LRU |
 | データソース | BigQuery（Proxy 経由アクセス） |
@@ -266,7 +267,7 @@
 
 | # | 論点 | 内容 |
 |---|---|---|
-| D1 | 言語・FW 選定 | Python (FastAPI) / TypeScript (NestJS) / C# (.NET 9 Minimal API) を AI 支援開発相性・Azure SDK 成熟度で比較 |
+| D1 | 言語・FW 選定 | **【確定】Python / FastAPI を採用**（→ `runtime-framework-decision.md`）。AI 支援開発相性・エコシステム成熟度・App Service ネイティブ対応（2026 年強化）・BigQuery/Entra/認可ライブラリ成熟が決め手。Litestar / .NET 9 / Go・Huma は再検討トリガー付きで見送り |
 | D2 | ABAC 実装方式 | OPA 組込み（Rego ポリシー）vs 軽量自前実装 vs Cedar |
 | D3 | API 設計規約（L5） | JSON:API / OData / 独自 のページング・フィルタ表現比較 |
 | D4 | OpenAPI 連携方式（L6） | スキーマファースト vs コードファースト |
@@ -292,3 +293,4 @@
 | 日付 | 版 | 内容 |
 |---|---|---|
 | 2026-05-26 | 1.0 | 案A 採用決定、案B/案C を将来比較用に保持 |
+| 2026-06-03 | 1.1 | 言語・FW を Python / FastAPI に確定（D1 クローズ、`runtime-framework-decision.md` 参照） |

@@ -2,6 +2,7 @@
 
 > Source: split from previous combined API technology research memo.
 > Status: Design input.
+> **決定（2026-06）**: 言語・FW は **Python / FastAPI を採用**（`runtime-framework-decision.md`）。下記 3 案のうち **#2 Python が採用案**。#1 .NET / #3 Go は比較用に保持。実際のリポジトリ構成は `../06-data-platform/repository-strategy.md` の `api` リポジトリ（FastAPI、ドメイン単位構成）を正とする。
 
 # Part 3: ソースコード構造のイメージ
 
@@ -116,7 +117,7 @@ public class BigQueryGateway : IBigQueryGateway
 
 ---
 
-## 3.2 推奨 #2: Python / Litestar(または FastAPI)
+## 3.2 推奨 #2: Python / FastAPI 【採用】（Litestar は将来オプション）
 
 ```
 internal-api-python/

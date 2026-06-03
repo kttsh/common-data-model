@@ -4,7 +4,7 @@
 > Sources: role memo, `../01-requirements/product-requirements.md`, `../02-architecture/platform-architecture-decision.md`
 > 用途: チーム内ディスカッション（API・データモデルの権限管理）
 > 前提: データソースは BigQuery、実行基盤は FastAPI + App Service / Functions、DAB は不採用方針
-> Note: FastAPI は本メモ作成時点の実装仮説。ランタイム最終選定は `../04-research/api-runtime-framework-comparison-2026.md` を踏まえて別途確定する。
+> Note: **FastAPI は採用決定済み（2026-06）**。選定理由は `../02-architecture/runtime-framework-decision.md` を参照。
 > 用語: **OpenGIM = 社内ユーザーリポジトリ**（役職・所属など認可属性の正本。Entra ID には当該属性が無いため別途参照する）
 
 ---
@@ -100,6 +100,6 @@
 2. **③SQL ライク条件の統制方法**: 自由 SQL ではなく、レビュー可能なポリシー定義フォーマット（ABAC / OPA / Cedar）に倒せるか。
 3. **⑤T ユーザー／AI エージェントの認可**: OBO かサービス ID 固定かの切り分け。
 4. **④デフォルト権限の言い換え**: 「入口開放＋行列制御常時適用」で合意。
-5. ランタイムは App Service 主・Functions 補助で確定（異論があればここで）。
+5. ランタイムは App Service 主・Functions 補助で確定。**言語・FW は Python / FastAPI に確定**（`../02-architecture/runtime-framework-decision.md`）。
 
 ---

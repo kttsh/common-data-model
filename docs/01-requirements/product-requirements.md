@@ -107,6 +107,7 @@ BigQuery 上の基幹システムデータをもとに、**標準データモデ
   - **Claude / Devin による AI 支援開発** が機能しやすい、ドキュメント・コミュニティ・型情報が成熟したスタック。
   - **OpenAPI 3.1 / OAuth2 / Azure SDK / BigQuery クライアント** の対応が成熟している言語。
   - 候補（後で比較）: Python (FastAPI) / TypeScript (NestJS, Hono) / C# (.NET minimal API) 等。
+  - **【確定 2026-06】Python / FastAPI を採用**。上記選定指針（AI 支援開発相性・成熟度）に最も合致し、App Service の FastAPI ネイティブ対応（2026 年強化）・BigQuery/Entra/認可ライブラリの成熟も決め手。根拠は `../02-architecture/runtime-framework-decision.md`。
 - **AI 支援開発のためのコーディング規約・リポジトリ標準（AGENTS.md / CLAUDE.md 等）の整備は別プロジェクトで対応**。
 
 ---
@@ -118,7 +119,7 @@ BigQuery 上の基幹システムデータをもとに、**標準データモデ
 | L1 | 複雑ロジックの配置 | BigQuery ビュー / マテビュー / 中間テーブル / API 層 の比較 |
 | L2 | キャッシュ配置 | APIM 組込み / Redis / BI Engine / マテビュー / アプリ内 の比較 |
 | L3 | 行・列レベル制御の実装方式 | 属性ベース (ABAC) / OPA 等のポリシーエンジン / 独自実装 |
-| L4 | API バックエンドのランタイム | Functions / App Service / Container Apps / AKS の比較 |
+| L4 | API バックエンドのランタイム | Functions / App Service / Container Apps / AKS の比較。**【確定】App Service（案A）+ 言語・FW は Python / FastAPI**（→ `../02-architecture/runtime-framework-decision.md`） |
 | L5 | API 設計規約 | JSON:API / OData / 独自、ページング・フィルタ表現の選択 |
 | L6 | OpenAPI 連携方式 | コードファースト vs スキーマファースト |
 | L7 | サービスアカウントの属性管理 | SQL Server 同居 / Entra ID アプリクレーム / 別レジストリ |

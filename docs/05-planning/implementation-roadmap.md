@@ -8,7 +8,7 @@
 - API platform mission: expose common data models built on BigQuery as internal REST APIs.
 - Adopted platform baseline: App Service + existing APIM + APIM built-in cache + in-process LRU + BigQuery views.
 - Authorization baseline: API/App Service owns per-user ABAC decisions; BigQuery executes pushed-down parameterized filters; APIM remains the coarse entry gate.
-- Research state: runtime/framework is still a decision input. The current research shortlist is .NET Minimal API, Python Litestar/FastAPI, and Go/Huma.
+- Runtime/framework decision: **resolved — Python / FastAPI is adopted** (see `../02-architecture/runtime-framework-decision.md`). The earlier research shortlist (.NET Minimal API, Python Litestar/FastAPI, Go/Huma) is retained only as re-evaluation triggers.
 
 ## Immediate Design Work
 
@@ -16,7 +16,7 @@
 2. Confirm App Service plan constraints, Linux/Windows constraints, and deployment slot availability.
 3. Confirm existing APIM Product/Subscription naming and tenancy rules.
 4. Confirm OpenGIM / on-prem SQL Server schema, join key from Entra ID, and available authorization attributes.
-5. Finalize runtime/framework choice and OpenAPI workflow.
+5. ~~Finalize runtime/framework choice~~ **(done: Python / FastAPI)** and define the OpenAPI workflow (FastAPI 3.1 output -> downgrade to 3.0 for APIM import).
 6. Design the authorization policy format and AST-to-BigQuery translation layer.
 7. Define audit log schema, especially subject/action/resource, decision reason, and applied filter.
 
@@ -31,7 +31,8 @@
 
 ## Research Backlog
 
-- `../04-research/api-runtime-framework-comparison-2026.md`: runtime/framework comparison.
+- `../02-architecture/runtime-framework-decision.md`: **runtime/framework decision (Python / FastAPI, resolved 2026-06)**.
+- `../04-research/api-runtime-framework-comparison-2026.md`: runtime/framework comparison (research input behind the decision above).
 - `../04-research/ci-cd-delivery-research-2026.md`: Harness, CI/CD, SBOM, STO, SRM.
 - `../04-research/authorization-models-and-standards-2026.md`: ABAC/PBAC/AuthZEN/RFC background.
 - `../02-architecture/repository-structure-options.md`: source tree options by runtime.
@@ -41,7 +42,7 @@
 ### Recommendations
 
 1. **Phase 0(チーム前提整理・1〜2週間)**
-   - 既存スキルセット棚卸し: .NET 経験者が3割以上なら #1 .NET、Python データチームに密接なら #2 Python、Go 経験者がいて新規構築なら #3 Go。
+   - 言語・FW は **Python / FastAPI に確定済み**(`../02-architecture/runtime-framework-decision.md`)。スキルセット棚卸しは「Python/FastAPI への習熟度・OpenAPI スキーマファースト運用」に観点を移す。.NET 経験者が大半など分布が大きく偏った場合のみ再検討トリガーとして扱う。
    - Bicep / Terraform の社内方針確認 → Harness IaCM を使う前提なら Terraform に揃える決定を最初に取る(後戻り高コスト)。
 2. **Phase 1(PoC・4〜6週間)**
    - 選定言語で最小エンドポイント(`/healthz` + BigQuery 簡易クエリ + Entra ID JWT 検証)を実装、App Service Linux にデプロイ。
