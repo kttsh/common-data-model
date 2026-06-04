@@ -17,7 +17,7 @@
 - 一覧の `row_scope` は subject 属性で行集合を絞るが、**行ごとに変わる属性**（`confidentiality` など）の最終確認は 1 件単位の方が素直に書ける。
 - 検索時点では `normal` でも、詳細取得の直前に `restricted` へ変わっている可能性がある（time-of-check / time-of-use のずれ）。取得した最新の 1 行で deny を再評価する。
 
-この方式は、詳細画面で BigQuery から 1 行取得した後に確認する、または候補件数が少ない場合に向く。一方で、**一覧検索で BigQuery から大量データを取ってから 1 件ずつ `enforce()` するのは避ける**（主経路は親 §2.4 の `row_scope` → 親 §5 の WHERE 押し下げ）。
+この方式は、詳細画面で BigQuery から 1 行取得した後に確認する、または候補件数が少ない場合に向く。一方で、**一覧検索で BigQuery から大量データを取ってから 1 件ずつ `enforce()` するのは避ける**（主経路は親ドキュメントの `row_scope` → WHERE 押し下げ）。
 
 ---
 
@@ -34,7 +34,7 @@ flowchart TD
     D -->|"allow（起票者 / 同じ部 / 承認者 など）"| F["1 件を表示"]
 ```
 
-このとき、ABAC の `eval()` に条件を置くのが一番わかりやすい。所属の階層判定は、subject と（取得済みの）注文行の双方で **部レベルの派生キー** `dept_section`（`department_code` の先頭 6 桁）を構築時に計算し、それを比較する。コードのスライスを matcher 式に持ち込まず、`is_group_leader_or_above` と同じ「派生属性に落とす」流儀に揃える（親 §2.3）。
+このとき、ABAC の `eval()` に条件を置くのが一番わかりやすい。所属の階層判定は、subject と（取得済みの）注文行の双方で **部レベルの派生キー** `dept_section`（`department_code` の先頭 6 桁）を構築時に計算し、それを比較する。コードのスライスを matcher 式に持ち込まず、`is_group_leader_or_above` と同じ「派生属性に落とす」流儀に揃える。
 
 model:
 
@@ -91,7 +91,7 @@ allowed = enforcer.enforce(subject, order, "read")
 
 ## 3. ケース別の 1 件単位 policy
 
-親 §3 の各ケースについて、一覧（主経路）と対になる **1 件単位の確認**の書き方を示す。§2 の combined policy を分解したものなので、実運用では §2 のように 1 本の model/policy にまとめてよい。
+親ドキュメントの各ケースについて、一覧（主経路）と対になる **1 件単位の確認**の書き方を示す。前掲の combined policy を分解したものなので、実運用では前掲のように 1 本の model/policy にまとめてよい。
 
 ### 3.1 日本居住者以外は何も取得できない
 
@@ -133,11 +133,11 @@ p, purchase_order, read, r.sub.employee_type == 4, deny
 p, purchase_order, read, r.obj.confidentiality == "restricted" && r.obj.created_by != r.sub.id && r.obj.approver_id != r.sub.id, deny
 ```
 
-承認者が複数の場合は、`approver_id` の単一比較ではなく承認者集合への所属判定にする（親 §3.6）。
+承認者が複数の場合は、`approver_id` の単一比較ではなく承認者集合への所属判定にする。
 
 ### 3.6 グループ長以上だったら決裁金額の欄が見える（列単位）
 
-列表示制御は、1 件単位でも `read_column` のような別 action で判定できる。「グループ長以上か」は派生フラグ `is_group_leader_or_above` を見る（親 §2.3・§3.4）。
+列表示制御は、1 件単位でも `read_column` のような別 action で判定できる。「グループ長以上か」は派生フラグ `is_group_leader_or_above` を見る。
 
 ```csv
 p, purchase_order.approval_amount, read_column, r.sub.country_of_residence == "JP" && r.sub.employee_type != 4 && r.sub.is_group_leader_or_above == true, allow
@@ -153,6 +153,6 @@ p, purchase_order.approval_amount, read_column, r.sub.employee_type == 4, deny
 
 - [`policy-examples-purchase-order.md`](policy-examples-purchase-order.md): 親。主経路（一覧フィルタ）でのルール定義方法と BQ 展開イメージ。
 - [`row-scope-to-bigquery-implementation.md`](row-scope-to-bigquery-implementation.md): 別紙。`row_scope` を BigQuery の WHERE に展開する Python 実装。
-- [`basic-specification.md`](basic-specification.md): PyCasbin の基本仕様と PERM 構文（ABAC・`eval()`・deny-override は §4・§7）。
+- [`basic-specification.md`](basic-specification.md): PyCasbin の基本仕様と PERM 構文（ABAC・`eval()`・deny-override）。
 - [`../row-level-filtering-layering.md`](../row-level-filtering-layering.md): 行レベル絞り込みの層分担。
-- [`../authorization-boundaries-and-interface.md`](../authorization-boundaries-and-interface.md): `authorize()` と `Decision` のインターフェース、2 段の裁き。
+- [`../authorization-boundaries-and-interface.md`](../authorization-boundaries-and-interface.md): `authorize()` と `Decision` のインターフェース、認可判断を2段に分ける考え方。

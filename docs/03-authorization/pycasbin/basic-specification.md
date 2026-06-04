@@ -2,7 +2,7 @@
 
 > ステータス: 調査メモ（PyCasbin 採用後の基本仕様整理）
 > 情報時点: 2026年6月
-> Sources: PyCasbin README, Casbin official docs `overview`, `syntax-for-models`, `supported-models`, `abac`, `rbac-with-domains`, `function`, `adapters`, `data-permissions`, `rbac-api`
+> Sources: PyCasbin README, Casbin official docs `overview`, `syntax-for-models`, `supported-models`, `abac`, `rbac-with-domains`, `function`, `adapters`, `data-permissions`, `rbac-api`, PyCasbin `examples/rbac_with_deny_model.conf`, `examples/abac_rule_model.conf`
 > Related: `policy-examples-purchase-order.md`, `row-scope-to-bigquery-implementation.md`, `single-record-final-check.md`, `../authorization-strategy.md`, `../authorization-boundaries-and-interface.md`, `../row-level-filtering-layering.md`, `../shared-pdp-across-api-and-bigquery.md`, `../../04-research/abac-authz-library-comparison.md`
 
 ---
@@ -103,6 +103,8 @@ p, bob, data2, write
 ```
 
 `policy_effect` は任意式ではなく、Casbin が用意する組み込み effect から選ぶ。代表例は allow-override、deny-override、allow-and-deny、priority、subject-priority である。
+
+本プロジェクトのポリシー定義例で多用する **allow-and-deny**（`e = some(where (p.eft == allow)) && !some(where (p.eft == deny))`）は、allow と deny が同時に一致したとき deny を優先する組み込み effect であり、独自式ではない（PyCasbin `examples/rbac_with_deny_model.conf` で確認）。居住国・社員区分・機密区分などの強い拒否条件は、この effect と `eft = deny` の policy で表す。
 
 注意点:
 
@@ -218,11 +220,63 @@ p, r.sub.job_level >= 5 && r.sub.department == r.obj.department, department_cost
 p, r.sub.role == "finance_admin", department_cost, read
 ```
 
+`eval(p.sub_rule)`（`eval(p.cond)` も同様）は、policy 側に文字列で書いた条件式を実行時に評価する ABAC の標準手法である（PyCasbin `examples/abac_rule_model.conf` で確認）。ただし式が複雑になるとレビュー・テスト・性能の負担が増えるため、コードの特性（前方一致・順序非互換など）は subject 構築時に派生フラグや安全なキーへ落とし、`eval()` には等値・範囲の単純な比較を寄せる（コードの捌き方は [`policy-examples-purchase-order.md`](policy-examples-purchase-order.md) を参照）。
+
 本プロジェクトでは `r.sub` に Open-GIM から得た所属・役職・原価センタ等を入れ、`r.obj` にモデル名・モデル所有部門・機密区分等を入れる。PyCasbin は「この request を許可するか」を判定し、どの BigQuery 行へ絞るかは別の filter 生成層で扱う。
 
 ---
 
-## 8. RESTful path / HTTP method
+## 8. 属性・コード定義（モデル横断リファレンス）
+
+`r.sub`（認証済みユーザー）に載せる属性と、業務で使うコード体系の定義をここに集約する。これらは特定モデル固有ではなくモデル横断で使うため、本仕様書のリファレンスとして持つ。`r.obj`（モデル行）の属性はモデルごとに異なるので、各モデルのポリシー定義例（例: [`policy-examples-purchase-order.md`](policy-examples-purchase-order.md)）で示す。
+
+コードを policy でどう扱うか（特性を subject 構築時に吸収し、matcher には安全なキーや派生フラグだけを見せる流儀）は [`policy-examples-purchase-order.md`](policy-examples-purchase-order.md) を参照。本節は「コードが何を表すか」の定義に絞る。
+
+### 8.1 subject 属性
+
+| 属性 | 例 | 定義 |
+|---|---|---|
+| `id` | `"M123456"` | ユーザー ID。アルファベット 1 文字＋数字 6 桁 |
+| `department_code` | `"0A0B03020100"` | 所属コード。12 桁。2 桁ずつ組織階層を表す |
+| `position_code` | `"11A"` | 役職コード。順序比較できない人事コード |
+| `employee_type` | `1` | 社員区分。subject 構築時と policy で型（int / str）を揃える |
+| `country_of_residence` | `"JP"` | ISO 3166-1 alpha-2。日本居住者は `"JP"`。正本は Open-GIM。未設定・不明値は deny 側に倒す |
+
+### 8.2 所属コード `department_code` の階層
+
+12 桁の英数字で、先頭から 2 桁ずつが組織階層（本部・事業部・部・グループ…）を表す。「同じ◯◯か」は **先頭一致（プレフィックス）** で判定する。たとえば `0A0B03020100` なら、`0A0B03`（先頭 6 桁）で始まるものは「同じ部」。
+
+| 階層 | 先頭一致の桁数 | レベル名（実装の `DEPT_LEVEL_DIGITS`） |
+|---|---|---|
+| 本部 | 2 | `domain` |
+| 事業部 | 4 | `division` |
+| 部 | 6 | `section` ← 「自部門」の既定 |
+| グループ | 8 | `group` |
+| チーム | 10 | `team` |
+| 班 | 12 | `squad` |
+
+「自部門」は **部レベル（先頭 6 桁）** を既定とする。グループ単位など別レベルが要るなら桁数を変えるだけでよい。一覧経路では前方一致を範囲比較（`BETWEEN @lo AND @hi`）に展開してクラスタ列のプルーニングを効かせ、1 件単位では先頭 6 桁の派生キー `dept_section` の等値で見る。範囲展開と桁マッピングの実装は [`row-scope-to-bigquery-implementation.md`](row-scope-to-bigquery-implementation.md) にある。
+
+### 8.3 役職コード `position_code`
+
+役職は `11A`（一般）・`31A`（グループ長）・`41A`（部長）のような人事コードで持つ。コードは数値ランクではないため `>=` で「グループ長以上か」を判定できない。そこで subject 構築時に、グループ長以上に相当するコード一覧と突き合わせて派生フラグ（例: `is_group_leader_or_above`）を立て、policy ではそのフラグを参照する。コード一覧の保守は Open-GIM / 人事マスタ側に寄せ、policy にコードを直書きしない。
+
+### 8.4 社員区分 `employee_type`
+
+数値コードで持つ。subject 構築時と policy で型（int / str）を揃える。
+
+| code | 区分 |
+|---|---|
+| `1` | 社員 |
+| `2` | グループ会社社員 |
+| `3` | 派遣社員 |
+| `4` | 請負社員 |
+
+どの区分にどの絞り込みを当てるか（請負社員の deny、グループ会社社員・派遣社員の扱いなど）は各モデルのポリシーで決める。`purchase_order` での適用と未決の判断ポイントは [`policy-examples-purchase-order.md`](policy-examples-purchase-order.md) を参照。
+
+---
+
+## 9. RESTful path / HTTP method
 
 RESTful API の認可では、object に path、action に HTTP method または業務 action を入れる。
 
@@ -254,7 +308,7 @@ FastAPI 側では、HTTP method をそのまま使うか、`GET -> read`, `POST 
 
 ---
 
-## 9. Policy storage / adapters
+## 10. Policy storage / adapters
 
 PyCasbin は policy を adapter 経由で読み書きする。開発初期は CSV ファイルで十分だが、運用時に UI や申請フローから policy を更新するなら DB adapter を検討する。
 
@@ -285,7 +339,7 @@ await e.load_policy()
 
 ---
 
-## 10. Management API / RBAC API / data permissions
+## 11. Management API / RBAC API / data permissions
 
 PyCasbin は policy を実行時に参照・変更する API を持つ。
 
@@ -311,7 +365,7 @@ implicit_permissions = e.get_implicit_permissions_for_user("alice")
 
 ---
 
-## 11. 本プロジェクトでの使い方
+## 12. 本プロジェクトでの使い方
 
 推奨する責務分担:
 
@@ -337,7 +391,7 @@ g, bob, finance_admin
 
 ---
 
-## 12. ポリシー定義例（別ドキュメント）
+## 13. ポリシー定義例（別ドキュメント）
 
 注文伝票 `purchase_order` を題材にした、PyCasbin 初心者向けの policy 記述例は [`policy-examples-purchase-order.md`](policy-examples-purchase-order.md) に切り出した。主経路（一覧フィルタ）を「基本的な仕組み → 実例 → 補足 → BigQuery への展開のイメージ」の順で示している。込み入った話は 2 つの別紙に分けた。
 
@@ -356,7 +410,7 @@ g, bob, finance_admin
 
 ---
 
-## 13. 設計上の注意
+## 14. 設計上の注意
 
 PyCasbin を使う場合も、既存の認可方針は維持する。
 
@@ -369,7 +423,7 @@ PyCasbin を使う場合も、既存の認可方針は維持する。
 
 ---
 
-## 14. 次に決めること
+## 15. 次に決めること
 
 1. `subject` に載せる Open-GIM 属性の最小セット。
 2. `resource` の標準形。例: `model`, `path`, `owner_department`, `sensitivity`, `tenant`。

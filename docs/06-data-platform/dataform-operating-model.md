@@ -1,11 +1,11 @@
 # Dataform リポジトリ運用設計（GCP ネイティブ案・不採用）
 
-> ⚠️ **不採用（記録として保持）**: 本書が示す **GCP ネイティブ方式**（release / workflow configuration＋strict act-as カスタム SA＋Terraform）は、その後の検討で **CLI 路線へ変更されたため採用しない**。Dataform のデプロイ運用の正は **`../02-architecture/repository-strategy.md` §8（CLI 方式）と `migration-plan.md`（CLI 路線の移行手順）** を参照すること。本書は、GCP ネイティブ案を検討した記録として残す（将来 Container/native 運用を再評価する際の比較材料）。
+> ⚠️ **不採用（記録として保持）**: 本書が示す **GCP ネイティブ方式**（release / workflow configuration＋strict act-as カスタム SA＋Terraform）は、その後の検討で **CLI 路線へ変更されたため採用しない**。Dataform のデプロイ運用の正は **`../02-architecture/repository-strategy.md`（CLI 方式）と `migration-plan.md`（CLI 路線の移行手順）** を参照すること。本書は、GCP ネイティブ案を検討した記録として残す（将来 Container/native 運用を再評価する際の比較材料）。
 
 `../02-architecture/repository-strategy.md` の Dataform 部分を、2026 年の GCP ネイティブ標準（BigQuery 統合・release / workflow 構成・strict act-as）に合わせて検討したもの。**当初は本方式を確定としたが、後に CLI 路線へ反転した**（経緯は `migration-plan.md` 冒頭の「旧前提からの変更」を参照）。
 
 - 作成日: 2026-06-03
-- ステータス: **不採用（GCP ネイティブ案）**。デプロイは CLI 路線に変更（最新は `../02-architecture/repository-strategy.md` §8・`migration-plan.md`）
+- ステータス: **不採用（GCP ネイティブ案）**。デプロイは CLI 路線に変更（最新は `../02-architecture/repository-strategy.md`・`migration-plan.md`）
 - 関連: `../02-architecture/repository-strategy.md`（案 B・全体方針）、`dataform-naming-convention.md`（命名・層構造）、`migration-plan.md`（移行ステップ＝CLI 路線）
 - 旧設計からの前提変更（※本書が検討した GCP ネイティブ案の内部での差分。CLI 路線への反転は上記バナー参照）:
   - 旧 `environments/*.json`（コード同梱の環境定義）方式は **廃止** → **release configuration**（Terraform 管理推奨）へ移譲。
@@ -23,7 +23,7 @@
 | # | 論点 | 決定 |
 |---|---|---|
 | 1 | マルチ環境の作り方 | **単一 Dataform リポジトリ＋ release configuration のプロジェクトオーバーライド**で dev/stg/prod を表現（option a に簡素化） |
-| 2 | stg→prod の承認ゲート | **保留**。確定するまでは §7 の暫定運用（手動で固定 commit を前進）で回す |
+| 2 | stg→prod の承認ゲート | **保留**。確定するまでは暫定運用（手動で固定 commit を前進）で回す |
 | 3 | スケジューリング | **保留だがシンプル維持**。ネイティブの workflow configuration による定期 run のみ。高度な DAG は将来課題 |
 
 ---
@@ -36,7 +36,7 @@
   - **release configuration** … リポジトリのコンパイル結果テンプレート。Git の commitish（branch / tag / commit SHA）に紐づけ、**GCP プロジェクト・schema suffix・table prefix・vars を上書き**できる。
   - **workflow configuration** … 選択した release configuration の最新コンパイル結果を、スケジュールに従って BigQuery に実行する。
 - **前提条件**: いずれの方式も「**単一の Dataform リポジトリ ＝ 単一のリモート Git リポジトリ**」を要求する。テーブル別・環境別ブランチは不要。
-- **strict act-as mode が全リポジトリで強制**。実行にはカスタムサービスアカウント（または個人のユーザー認証）が必須（§4）。
+- **strict act-as mode が全リポジトリで強制**。実行にはカスタムサービスアカウント（または個人のユーザー認証）が必須。
 
 ---
 
@@ -62,7 +62,7 @@ Dataform    │  Dataform repository × 1                       │  ← 管理 
   BigQuery     BigQuery      BigQuery
   pj-dev       pj-stg        pj-prod
    ▲             ▲             ▲
-   └──── workflow configuration（定期 run・§8）────┘
+   └──── workflow configuration（定期 run）────────┘
 ```
 
 - Dataform リポジトリは **1 つだけ**作成し、単一の GitHub リポジトリ（`ai-driven-comod-cdem`）に接続する。リポジトリの置き場所は専用の管理プロジェクト推奨（プロジェクト数を抑えたいなら `pj-dev` でも可）。
@@ -137,7 +137,7 @@ ai-driven-comod-cdem/
     └── ci.yml                     # PR 検証のみ（compile + dry-run + assertions）
 ```
 
-> 旧設計にあった `environments/` ディレクトリは **作らない**。環境差は release configuration（§3）に置く。
+> 旧設計にあった `environments/` ディレクトリは **作らない**。環境差は release configuration に置く。
 
 ---
 
@@ -159,7 +159,7 @@ feature → PR(CI: compile + dry-run + assertions) → main
 
 ## 7. 承認ゲート（保留中の暫定運用）
 
-正式な承認ゲート方式は **保留**（§10 オープン事項）。確定までの暫定運用:
+正式な承認ゲート方式は **保留**（オープン事項）。確定までの暫定運用:
 
 - `prod` release configuration の固定 commit / tag を、**stg 検証完了後に手動で前進**させる。
 - prod 到達コミットに `dataform-vX.Y.Z` タグを付与（人間可読エイリアス）。
@@ -184,7 +184,7 @@ feature → PR(CI: compile + dry-run + assertions) → main
 
 - `ci.yml`（PR トリガー）: `dataform compile` ＋ dry-run ＋ assertions。**デプロイはしない**（デプロイは release / workflow 構成が担当）。
 - 認証は OIDC / WIF。
-- `main` 保護・squash・トランクベース。ブランチ運用の詳細は `dataform-migration-plan.md` および §11 を参照。
+- `main` 保護・squash・トランクベース。ブランチ運用の詳細は `migration-plan.md` を参照。
 
 ---
 
@@ -194,7 +194,7 @@ feature → PR(CI: compile + dry-run + assertions) → main
 - [ ] スケジュール頻度・`tag` 設計。
 - [ ] `V_COEP` の層（`sources` の declaration か `intermediate/stg_coep` か）の確定。
 - [ ] Terraform 化の範囲（repository・release/workflow configuration・カスタム SA・IAM）。
-- [ ] 下流（API `repository.py` / BI）の有無に応じたリネーム方式（移行ドキュメント §6）。
+- [ ] 下流（API `repository.py` / BI）の有無に応じたリネーム方式（移行ドキュメント）。
 
 ---
 

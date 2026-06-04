@@ -1,7 +1,7 @@
 # CI/CD and Delivery Platform Research (2026)
 
 > Source: split from previous combined API technology research memo.
-> Status: **調査資料（採用見送り）**。CI/CD の**実装は GitHub Actions を採用**する（正は `../02-architecture/repository-strategy.md` §6・§10、`../06-data-platform/dataform-operating-model.md`〔不採用〕ではなく `migration-plan.md` の GitHub Actions 前提）。本書の **Harness 一式は不採用**だが、マルチ言語 SAST/SBOM/SRM/Slot Swap を一プラットフォームで束ねたくなった場合の将来比較材料として保持する。下記の `.harness/pipelines/...` 例も Harness 採用時のイメージであり、現行の正規構成ではない。
+> Status: **調査資料（採用見送り）**。CI/CD の**実装は GitHub Actions を採用**する（正は `../02-architecture/repository-strategy.md`、`../06-data-platform/dataform-operating-model.md`〔不採用〕ではなく `migration-plan.md` の GitHub Actions 前提）。本書の **Harness 一式は不採用**だが、マルチ言語 SAST/SBOM/SRM/Slot Swap を一プラットフォームで束ねたくなった場合の将来比較材料として保持する。下記の `.harness/pipelines/...` 例も Harness 採用時のイメージであり、現行の正規構成ではない。
 
 # Part 2: Harness による CI/CD 敷き詰め（採用見送り・将来比較用）
 

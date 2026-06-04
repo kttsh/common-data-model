@@ -7,7 +7,7 @@
 - ステータス: ドラフト（実行手順）
 - 関連: `../02-architecture/repository-strategy.md`（上位設計：リポジトリ戦略・3 ランドスケープ昇格・運用・ブランチ戦略）、`dataform-naming-convention.md`（命名・層）
 - 前提: **CLI 路線**（ローカル CLI 手打ち → Step 2 で GitHub Actions の CLI 実行）。GCP 側 Dataform リポジトリは作らず BigQuery 直叩き。環境差はデプロイ時の **CLI コンパイラオプション**（`--default-database` 等）で注入。認証は**鍵レス**（WIF＋ADC）。
-- 旧前提からの変更: かつての「GCP ネイティブ（release configuration のプロジェクトオーバーライド＋strict act-as カスタム SA）」は採用しない。`../02-architecture/repository-strategy.md` §8（運用の初期メモ＝Dataform は CLI 方式）が CLI 路線を採ったため、release/workflow configuration と strict act-as カスタム SA は本プランから撤去した。GCP ネイティブ案の記録は `dataform-operating-model.md`（不採用）に残す。
+- 旧前提からの変更: かつての「GCP ネイティブ（release configuration のプロジェクトオーバーライド＋strict act-as カスタム SA）」は採用しない。`../02-architecture/repository-strategy.md`（運用の初期メモ＝Dataform は CLI 方式）が CLI 路線を採ったため、release/workflow configuration と strict act-as カスタム SA は本プランから撤去した。GCP ネイティブ案の記録は `dataform-operating-model.md`（不採用）に残す。
 
 ---
 
@@ -30,14 +30,14 @@ ai-driven-comod-cdem/
 
 | as-is の状態 | 抵触している原則 | 出典 |
 |---|---|---|
-| 大文字 `Dim_COST_MASTER` / `V_COEP` | 小文字 snake_case | 命名 §1 |
-| `Dim_` / `Fact_` / `V_` プレフィックス | dim/fct プレフィックス不採用、`outputs` は簡潔名 | 命名 §1・§3③ |
-| `-stg` / `-prd` を物理コピーで分離 | 環境差はフォルダ/ブランチで分けず、デプロイ時の CLI オプションで注入 | 戦略 §3・§5 |
-| 各テーブルが個別 `workflow_settings.yaml`＝実質別 repo | 1 Git = 1 Dataform repo、`outputs/<entity>/` で増やす | 戦略 §1・§3・§4 |
-| `outputs` しか無い（`sources`/`intermediate` 無し） | `definitions/` を 3 層に分割 | 戦略 §3、命名 §2 |
-| `dataform-rewrite.sh`（`sed` 置換）＋ REST `writeFile` | `workflow_settings.yaml` は環境非依存、環境差は CLI コンパイラオプションで注入 | 戦略 §3 |
-| SA JSON キー＋既定サービスエージェント | 鍵レス：WIF(OIDC)＋ADC。`.df-credentials.json` は非コミット | 戦略 §5 |
-| `empty/`・`github-actions/`・`develop/`・`staging/` | 雛形・残骸。`outputs/<entity>/` を1ファイル足す運用 | 戦略 §1・§4 |
+| 大文字 `Dim_COST_MASTER` / `V_COEP` | 小文字 snake_case | 命名 |
+| `Dim_` / `Fact_` / `V_` プレフィックス | dim/fct プレフィックス不採用、`outputs` は簡潔名 | 命名 |
+| `-stg` / `-prd` を物理コピーで分離 | 環境差はフォルダ/ブランチで分けず、デプロイ時の CLI オプションで注入 | 戦略 |
+| 各テーブルが個別 `workflow_settings.yaml`＝実質別 repo | 1 Git = 1 Dataform repo、`outputs/<entity>/` で増やす | 戦略 |
+| `outputs` しか無い（`sources`/`intermediate` 無し） | `definitions/` を 3 層に分割 | 戦略・命名 |
+| `dataform-rewrite.sh`（`sed` 置換）＋ REST `writeFile` | `workflow_settings.yaml` は環境非依存、環境差は CLI コンパイラオプションで注入 | 戦略 |
+| SA JSON キー＋既定サービスエージェント | 鍵レス：WIF(OIDC)＋ADC。`.df-credentials.json` は非コミット | 戦略 |
+| `empty/`・`github-actions/`・`develop/`・`staging/` | 雛形・残骸。`outputs/<entity>/` を1ファイル足す運用 | 戦略 |
 
 > 注: かつて as-is ギャップに挙げていた「ネイティブ repo＋strict act-as カスタム SA」関連は、CLI 路線では GCP 側 Dataform リポジトリを作らないため**論点ごと消滅**する。組織ポリシー `dataform.restrictGitRemotes`（ネイティブ repo の Git リモート制限）も CLI 路線では無関係。
 
@@ -45,9 +45,9 @@ ai-driven-comod-cdem/
 
 ## 2. あるべき姿（to-be）— 要約
 
-単一リポジトリ・3 層構造・小文字 snake_case・環境差は CLI コンパイラオプション・鍵レス（WIF＋ADC）。リポジトリ完成形は `../02-architecture/repository-strategy.md` §3 の `dataform` リポジトリ構成を参照。
+単一リポジトリ・3 層構造・小文字 snake_case・環境差は CLI コンパイラオプション・鍵レス（WIF＋ADC）。リポジトリ完成形は `../02-architecture/repository-strategy.md` の `dataform` リポジトリ構成を参照。
 
-本プランは**プラットフォーム別分割（`dataform` / `api` / `data-contracts`）のうち `dataform` リポジトリ単体**の移行を対象とする（戦略 §2）。下流（API `repository.py` / BI）との契約突き合わせは、採用するなら `data-contracts` 経由で行う（戦略 §6）。
+本プランは**プラットフォーム別分割（`dataform` / `api` / `data-contracts`）のうち `dataform` リポジトリ単体**の移行を対象とする（戦略）。下流（API `repository.py` / BI）との契約突き合わせは、採用するなら `data-contracts` 経由で行う（戦略）。
 
 ### 名称マッピング
 
@@ -65,7 +65,7 @@ ai-driven-comod-cdem/
 
 1. **構造の集約（低リスク・先）と命名リネーム（破壊的・後）を分離する。**
 2. **環境コピーの集約は、BigQuery テーブル名を変えなければ下流（API `repository.py` / BI）に無傷。** だから先に畳んで、最も痛い「3 重コピー・ドリフト・cherry-pick 地獄」を消す。環境差は畳んだあと CLI オプション（`--default-database`）で吸収する。
-3. **リネームは契約変更として扱う。** 大文字＋`Dim_`/`Fact_` → 小文字 snake_case はテーブル名が変わるので、消費者がいる場合は後方互換ビューを置き、**エンティティ単位**で段階適用する（命名 §6・戦略 §6）。
+3. **リネームは契約変更として扱う。** 大文字＋`Dim_`/`Fact_` → 小文字 snake_case はテーブル名が変わるので、消費者がいる場合は後方互換ビューを置き、**エンティティ単位**で段階適用する（命名・戦略）。
 4. **構造集約（Phase 0〜4）は Step 1 の手動 run で完結させ、自動デプロイ／昇格（Step 2）・Terraform 化（Step 3）はそのあとに分離する**（戦略 ロードマップ）。
 
 ---
@@ -77,7 +77,7 @@ ai-driven-comod-cdem/
 ### Phase 0 — 確認・準備（破壊なし）【Step 1】
 - 目的: 事故要因の洗い出し。
 - 作業: ① `*` / `*-stg` / `*-prd` の `workflow_settings.yaml` と `.sqlx` を **diff** し、環境差が「project/dataset 名だけ」か「SQL ロジックも違う（ドリフト）」かを判定（ドリフトしていれば **prod を真**として正す）。② 下流消費者（API/BI）の有無を確認。③ `V_COEP` の中身を確認し `sources` か `intermediate` かを決める。④ dev プロジェクトの**最小 IAM**（compile 時の dry-run／run に必要な BigQuery 権限）と、proxy-only egress 下での `HTTPS_PROXY`・npm registry・`bigquery.googleapis.com` 到達性を確認。
-- 検証: インベントリ表が揃い、リネーム方式（§6 の分岐）が決まる。ローカル CLI で `bigquery.googleapis.com` に到達できる。
+- 検証: インベントリ表が揃い、リネーム方式（消費者の有無による分岐）が決まる。ローカル CLI で `bigquery.googleapis.com` に到達できる。
 
 ### Phase 1 — 単一リポジトリ骨格（ローカル CLI で dev 検証）【Step 1】
 - 目的: 到達点の器を用意する（既存ディレクトリと共存可）。
@@ -95,11 +95,11 @@ ai-driven-comod-cdem/
 - 目的: `definitions/` の標準化。
 - 作業: `V_COEP` を `sources/sap/`（または `intermediate/stg_coep`）へ。master/detail を `outputs/<domain>/`（`cost/`・`order/`）へ移動。**まだリネームしない**。
 - 検証: 各移動をローカル CLI で dev に run → 検証。
-- 備考: Phase 2 と 3 はエンティティ単位で 1 ブランチにまとめると効率的（§5 参照）。
+- 備考: Phase 2 と 3 はエンティティ単位で 1 ブランチにまとめると効率的。
 
 ### Phase 4 — 命名規約への移行（破壊的・エンティティ単位）【Step 1】
 - 目的: 小文字 snake_case 化。
-- 作業: §6 の分岐に従う（消費者なしなら Phase 3 と同時、ありなら後方互換ビュー経由で段階移行）。
+- 作業: リネームの分岐に従う（消費者なしなら Phase 3 と同時、ありなら後方互換ビュー経由で段階移行）。
 - 検証: 旧名・新名の両方を参照テストで確認してから旧名を撤去。
 
 ### Phase 5 — クリーンアップ【Step 1 末尾】
@@ -108,10 +108,10 @@ ai-driven-comod-cdem/
 - 検証: 単一リポジトリ＝単一 Dataform repo、3 層、命名規約が満たされ、ローカル CLI run で dev/stg/prod 全てが同一 commit から再生成できる。
 
 ### （以降）Step 2 — CLI 自動デプロイ・昇格【本プランの範囲外・参照のみ】
-- 構造集約（Phase 0〜5）の完了後に着手。`deploy-dev.yml`（main push → dev へ CLI run）、`promote.yml`（承認ゲートで同一 commit を stg→prod）を追加。**WIF＋環境別 CI 用 SA＋IAM をここで必須化**し、GitHub Environments の承認ゲートと、OIDC subject の環境スコープ制限を入れる（戦略 §5・§7）。
+- 構造集約（Phase 0〜5）の完了後に着手。`deploy-dev.yml`（main push → dev へ CLI run）、`promote.yml`（承認ゲートで同一 commit を stg→prod）を追加。**WIF＋環境別 CI 用 SA＋IAM をここで必須化**し、GitHub Environments の承認ゲートと、OIDC subject の環境スコープ制限を入れる（戦略）。
 
 ### （以降）Step 3 — Terraform 化【本プランの範囲外・参照のみ】
-- デプロイ機構は CLI のまま。dataset・SA・WIF・IAM を `import` でコード化（リスクの高い WIF＋IAM スライスから先行、GCS backend、オンプレ実行）（戦略 §7）。
+- デプロイ機構は CLI のまま。dataset・SA・WIF・IAM を `import` でコード化（リスクの高い WIF＋IAM スライスから先行、GCS backend、オンプレ実行）（戦略）。
 
 ---
 
@@ -119,10 +119,10 @@ ai-driven-comod-cdem/
 
 ### 共通ルール
 - `main` を唯一の保護ブランチ。PR 必須・CI green 必須・直 push 禁止・**squash マージ**（1 PR = 1 revert 単位）。
-- 命名: `feature/<entity>-<desc>` / `chore/<desc>` / `fix/<desc>` / `refactor/<desc>` / `hotfix/<desc>`（戦略 §8）。
+- 命名: `feature/<entity>-<desc>` / `chore/<desc>` / `fix/<desc>` / `refactor/<desc>` / `hotfix/<desc>`（戦略）。
 - 各 PR の CI は `dataform compile` ＋ dry-run ＋ assertions（**dry-run は BigQuery に当たる**ため、CI ランナーに dev の最小 IAM と `bigquery.googleapis.com` 到達性が必要）。
 - マージ後の流れ（Step 1）: `main` にマージ後、開発者が**ローカル CLI** で `--default-database=<pj-dev>` を渡して dev に run → 検証。stg/prod へは同一 commit に対し `--default-database` だけ差し替えて run（自動昇格は Step 2 で `promote.yml` 化）。
-- feature 開発時の dev 書き込みは `--schema-suffix` 等で他開発者・prod と分離する（戦略 §8）。
+- feature 開発時の dev 書き込みは `--schema-suffix` 等で他開発者・prod と分離する（戦略）。
 
 ### 順序付きブランチ
 
@@ -145,15 +145,15 @@ ai-driven-comod-cdem/
 - **消費者あり**（API `repository.py` / BI が現テーブルを参照）: 破壊的なので段階適用。
   - 新名（例 `cost_master`）を作成しつつ、旧名のビュー（`config { name: "Dim_COST_MASTER" }` で旧名 view を別途定義し新名を指す）を一時的に残す。
   - 下流を新名へ移行 → 旧名ビュー撤去。これを **1 エンティティずつ**。
-  - 破壊的変更は契約変更として扱い、`data-contracts`（採用時）の契約・API 側スキーマと突き合わせてから適用する（命名 §6・戦略 §6）。
+  - 破壊的変更は契約変更として扱い、`data-contracts`（採用時）の契約・API 側スキーマと突き合わせてから適用する（命名・戦略）。
 
 ---
 
 ## 7. ロールバック・安全策
 
 - **squash** により「1 PR = 1 revert」。問題があれば該当 PR を revert。
-- **build-once**: Dataform は「同一 commit を同一 `dataformCoreVersion` でコンパイルした結果」を各環境に run することで再現する（戦略 §5）。前の安定 commit / tag を再 run すれば即復旧。
-- **fix-forward**: BigQuery テーブルや環境設定を手で直さない。直すのは `main`、dev で再現確認してから昇格（戦略 §5）。
+- **build-once**: Dataform は「同一 commit を同一 `dataformCoreVersion` でコンパイルした結果」を各環境に run することで再現する（戦略）。前の安定 commit / tag を再 run すれば即復旧。
+- **fix-forward**: BigQuery テーブルや環境設定を手で直さない。直すのは `main`、dev で再現確認してから昇格（戦略）。
 - 不具合は **再発防止の assertion / テスト**を必ず追加し、dev のゲートで二度と素通りさせない。
 
 ---
@@ -184,6 +184,6 @@ ai-driven-comod-cdem/
 
 ## 参考
 
-- 上位設計: `../02-architecture/repository-strategy.md`（分割案 §3、構成 §4、スケーリング §5、昇格・修正フロー §6、契約 §7、運用 §8、ブランチ §10）
+- 上位設計: `../02-architecture/repository-strategy.md`（分割案・構成・スケーリング・昇格/修正フロー・契約・運用・ブランチ）
 - 命名・層構造: `dataform-naming-convention.md`
 - Dataform 一次情報（CLI／コンパイラオプション／strict act-as 等）は `../02-architecture/repository-strategy.md` の「参考」を参照
