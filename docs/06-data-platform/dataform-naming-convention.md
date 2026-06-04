@@ -16,7 +16,7 @@
 | **ファイル名 = テーブル名** | `definitions/.../order_detail.sqlx` → BigQuery テーブル `order_detail`。一致させる |
 | **ファイル名はサブディレクトリ構造を反映** | Dataform 公式の明示要件。フォルダで役割が分かるようにする |
 | **BigQuery 命名規則に準拠** | 全ファイル名が BigQuery のテーブル命名規則に従う必要がある（Dataform の制約） |
-| **フォルダ = ドメイン分け、環境分けには使わない** | 環境差（dev/stg/prod）は `vars`／release configuration で吸収する。フォルダやブランチで環境を分けない |
+| **フォルダ = ドメイン分け、環境分けには使わない** | 環境差（dev/stg/prod）はデプロイ時に注入し、フォルダやブランチで環境を分けない（注入方式＝CLI コンパイラオプションは `repository-strategy.md`・`migration-plan.md` が正） |
 
 > 注: `fct_` / `dim_` プレフィックス（dbt 流のディメンショナルモデリング）は **採用しない**。Dataform 公式は `outputs` のファイル名を「簡潔に」とのみ規定しており、層プレフィックスを付けるのは中間層（`stg_`）のみとする。
 
@@ -46,12 +46,10 @@ dataform/
 │   ├── constants.js                  #   project/dataset を vars 経由で参照
 │   ├── naming.js                     #   命名規約マクロ
 │   └── assertions.js                 #   共通アサーション
-├── workflow_settings.yaml            # defaultProject/Dataset/Location, dataformCoreVersion, vars
+├── workflow_settings.yaml            # 環境非依存: defaultProject/Dataset/Location, dataformCoreVersion, vars
 ├── package.json
-├── environments/                     # 環境差はここだけ（コードは共通）
-│   ├── dev.json
-│   ├── stg.json
-│   └── prod.json
+│   # ★環境差（dev/stg/prod）はデプロイ時の CLI コンパイラオプション（--default-database 等）で注入。
+│   #   environments/*.json は使うとしてもローカル用で「非コミット」（CLI 路線。repository-strategy.md・migration-plan.md と整合）。
 └── .github/workflows/
 ```
 
@@ -134,27 +132,23 @@ config {
 
 | 対象 | 規約 |
 |---|---|
-| **schema（dataset）** | `config.schema` は `sources` 系 / `intermediate` / `outputs` 等で分ける。環境（dev/stg/prod）の出し分けは `vars` または release configuration のコンパイルオーバーライドで行い、**名前にハードコードしない** |
+| **schema（dataset）** | `config.schema` は `sources` 系 / `intermediate` / `outputs` 等で分ける。環境（dev/stg/prod）の出し分けはデプロイ時の CLI コンパイラオプション（`--default-database` 等）で注入し、**名前にハードコードしない**（注入方式の正は `repository-strategy.md`・`migration-plan.md`） |
 | **assertions** | ファイル名は対象テーブル基準で `assert_<table>_<rule>.sqlx`（例 `assert_order_detail_unique.sqlx`）。`intermediate` / `outputs` は document & test を必須 |
 | **tags** | 実行単位を表す小文字 snake_case（`tag: ["daily", "order"]`）。スケジュール/部分実行のフィルタに使う |
 | **includes/** | 共通ヘルパのみ。`constants.js`（project/dataset を vars 経由）、`naming.js`、`assertions.js`。むやみに増やさない |
 
 ---
 
-## 6. `ORDER_DETAIL` の移行
+## 6. 既存大文字テーブルの移行（命名の対応例）
 
-現状 `ORDER_DETAIL`（注文明細＝出力テーブル）を標準に合わせる場合:
+命名規約に合わせる際の名称対応の一例:
 
 ```
 旧: ORDER_DETAIL
 新: definitions/outputs/order/order_detail.sqlx  →  テーブル order_detail
 ```
 
-移行時の注意:
-
-- **一括リネームは破壊的**。テーブル名変更は、参照している下流クエリ・API（`repository.py`）・BI ツールをすべて壊す。
-- 新規・改修分から小文字 snake_case に統一し、既存は段階的に移行する。
-- 後方互換を壊す変更（列削除・型変更・リネーム）は「契約変更」として扱い、API 側のスキーマと突き合わせてから段階適用する。
+実際の移行は破壊的なので、順番・後方互換ビュー・契約変更としての段階適用・全エンティティの as-is→to-be 対応表は [`migration-plan.md`](migration-plan.md) が正本。本書（命名規約）としては「新規・改修分は最初から小文字 snake_case」「リネームは契約変更扱い」だけ押さえる。
 
 ---
 

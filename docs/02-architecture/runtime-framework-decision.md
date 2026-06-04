@@ -63,7 +63,7 @@ FastAPI 0.136 系は OpenAPI 3.1 をデフォルト出力する。以前は 3.1 
 
 ## 参考: モダンな代替スタック
 
-本基盤は FastAPI を採用する。前提知識として、2026 年時点で実運用に耐えるモダンな API スタックを以下に挙げる。
+本基盤は FastAPI を採用する。前提知識として、2026 年時点で実運用に耐えるモダンな API スタックを以下に挙げる（各スタックの 7 軸フラット比較・採用見送り理由は [`../04-research/api-runtime-framework-comparison-2026.md`](../04-research/api-runtime-framework-comparison-2026.md) が正本）。
 
 - **Python / Litestar** — msgspec ベースで合成ベンチのスループットは最速級。型駆動・ASGI で FastAPI と設計思想は近い。
 - **.NET 9 / Minimal API** — Azure・Entra ID・Managed Identity とのネイティブ統合が最も強い C# スタック。

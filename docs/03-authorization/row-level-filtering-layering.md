@@ -10,23 +10,7 @@
 
 ## 略語・用語
 
-| 略語 | 正式名 | 説明 |
-|---|---|---|
-| RLS | Row-Level Security | 行レベルセキュリティ |
-| CLS | Column-Level Security | 列レベルセキュリティ |
-| ABAC | Attribute-Based Access Control | 属性ベースアクセス制御 |
-| PEP | Policy Enforcement Point | ポリシー実施点（実際に許可/拒否を行う箇所） |
-| PDP | Policy Decision Point | ポリシー判定点（ポリシーを評価して可否を返す箇所） |
-| APIM | Azure API Management | Azure の API ゲートウェイ |
-| SA | Service Account | サービスアカウント |
-| IAM | Identity and Access Management | ID・アクセス管理 |
-| JWT | JSON Web Token | 署名付きトークン |
-| MV | Materialized View | マテリアライズドビュー |
-| AST | Abstract Syntax Tree | 抽象構文木（条件を木構造で表現。WHERE へ翻訳） |
-| OPA | Open Policy Agent | ポリシーエンジン |
-| Cerbos | （製品名） | 外部 PDP 型の認可エンジン |
-| LRU | Least Recently Used | 古いものから捨てるキャッシュ方式 |
-| TTL | Time To Live | キャッシュ等の有効期間 |
+略語・用語は [`glossary.md`](glossary.md) を参照（認可ドキュメント共通の正本）。
 
 ---
 

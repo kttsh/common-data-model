@@ -11,22 +11,7 @@
 
 ## 略語・用語
 
-| 略語 | 正式名 | 説明 |
-|---|---|---|
-| DAB | Data API Builder | Microsoft の API 自動生成ツール（本件は不採用） |
-| ABAC | Attribute-Based Access Control | 属性ベースアクセス制御 |
-| RLS | Row-Level Security | 行レベルセキュリティ |
-| CLS | Column-Level Security | 列レベルセキュリティ |
-| JWT | JSON Web Token | 署名付きトークン |
-| OIDC | OpenID Connect | OAuth 2.0 上の認証レイヤ |
-| OBO | On-Behalf-Of | 代理（人の文脈を引き継いで実行） |
-| RFC | Request for Comments | IETF の標準仕様文書 |
-| OPA | Open Policy Agent | ポリシーエンジン |
-| Cedar | （製品名） | AWS 由来のポリシー言語／エンジン |
-| SA | Service Account | サービスアカウント |
-| SLO | Service Level Objective | サービスレベル目標 |
-| LRU | Least Recently Used | 古いものから捨てるキャッシュ方式 |
-| TTL | Time To Live | キャッシュ等の有効期間 |
+略語・用語は [`glossary.md`](glossary.md) を参照（認可ドキュメント共通の正本）。
 
 ---
 

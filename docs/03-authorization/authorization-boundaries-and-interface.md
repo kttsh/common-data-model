@@ -9,27 +9,7 @@
 
 ## 略語・用語
 
-| 略語 | 正式名 | 説明 |
-|---|---|---|
-| PEP | Policy Enforcement Point | ポリシー実施点（実際に許可/拒否を行う箇所＝FastAPI 側） |
-| PDP | Policy Decision Point | ポリシー判定点（ポリシーを評価して可否を返す箇所＝権限機構） |
-| ABAC | Attribute-Based Access Control | 属性ベースアクセス制御 |
-| RLS | Row-Level Security | 行レベルセキュリティ |
-| CLS | Column-Level Security | 列レベルセキュリティ |
-| APIM | Azure API Management | Azure の API ゲートウェイ |
-| SA | Service Account | サービスアカウント |
-| JWT | JSON Web Token | 署名付きトークン |
-| OBO | On-Behalf-Of | 代理（人の文脈を引き継いで実行） |
-| RFC | Request for Comments | IETF の標準仕様文書（例：RFC 8693 ＝ OAuth 2.0 Token Exchange） |
-| AuthZEN | OpenID AuthZEN | OpenID Foundation の認可標準（Authorization API 1.0、PEP↔PDP 通信を標準化） |
-| OPA | Open Policy Agent | Rego を使うポリシーエンジン |
-| Rego | （固有名） | OPA のポリシー記述言語 |
-| CEL | Common Expression Language | Cerbos 等が条件記述に使う式言語 |
-| Cerbos | （製品名） | 外部 PDP 型の認可エンジン |
-| AST | Abstract Syntax Tree | 抽象構文木（条件を木構造で表現。WHERE へ翻訳） |
-| LRU | Least Recently Used | 古いものから捨てるキャッシュ方式 |
-| TTL | Time To Live | キャッシュ等の有効期間 |
-| DAB | Data API Builder | Microsoft の API 自動生成ツール（本件は不採用） |
+略語・用語は [`glossary.md`](glossary.md) を参照（認可ドキュメント共通の正本）。
 
 ---
 

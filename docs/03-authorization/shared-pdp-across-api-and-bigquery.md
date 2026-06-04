@@ -11,17 +11,7 @@
 
 ## 略語・用語
 
-| 略語 | 正式名 | 説明 |
-|---|---|---|
-| PDP | Policy Decision Point | ポリシー判定点（可否・条件を返す） |
-| PEP | Policy Enforcement Point | ポリシー実施点（実際に絞る箇所） |
-| ABAC | Attribute-Based Access Control | 属性ベースアクセス制御 |
-| RLS | Row-Level Security | 行レベルセキュリティ |
-| CLS | Column-Level Security | 列レベルセキュリティ |
-| SA | Service Account | サービスアカウント |
-| AST | Abstract Syntax Tree | 抽象構文木（条件を木構造で表現。WHERE へ翻訳） |
-| TTL | Time To Live | キャッシュ等の有効期間 |
-| LRU | Least Recently Used | 古いものから捨てるキャッシュ方式 |
+略語・用語は [`glossary.md`](glossary.md) を参照（認可ドキュメント共通の正本）。
 
 ---
 

@@ -9,33 +9,7 @@
 
 ## 略語・用語
 
-| 略語 | 正式名 | 説明 |
-|---|---|---|
-| RBAC | Role-Based Access Control | ロールベースアクセス制御 |
-| ABAC | Attribute-Based Access Control | 属性ベースアクセス制御 |
-| ReBAC | Relationship-Based Access Control | 関係ベースアクセス制御 |
-| PBAC | Policy-Based Access Control | ポリシーベースアクセス制御 |
-| ACL | Access Control List | アクセス制御リスト |
-| DAC | Discretionary Access Control | 任意アクセス制御 |
-| PEP | Policy Enforcement Point | ポリシー実施点（実際に許可/拒否を行う箇所） |
-| PDP | Policy Decision Point | ポリシー判定点（ポリシーを評価して可否を返す箇所） |
-| PIP | Policy Information Point | ポリシー情報点（判定に使う属性を提供する箇所） |
-| PAP | Policy Administration Point | ポリシー管理点（ポリシーを作成・管理する箇所） |
-| XACML | eXtensible Access Control Markup Language | OASIS の ABAC 標準 |
-| ALFA | Abbreviated Language For Authorization | XACML を書きやすくした略記言語 |
-| AuthZEN | OpenID AuthZEN | OpenID Foundation の認可標準（Authorization API 1.0） |
-| OIDC | OpenID Connect | OAuth 2.0 上の認証レイヤ |
-| JWT | JSON Web Token | 署名付きトークン |
-| OBO | On-Behalf-Of | 代理（人の文脈を引き継いで実行） |
-| RFC | Request for Comments | IETF の標準仕様文書 |
-| SCIM | System for Cross-domain Identity Management | ID プロビジョニング標準 |
-| OPA | Open Policy Agent | Rego を使うポリシーエンジン |
-| Rego | （固有名） | OPA のポリシー記述言語 |
-| CEL | Common Expression Language | Cerbos 等が条件記述に使う式言語 |
-| Cerbos / Cedar | （製品名） | 認可エンジン／ポリシー言語 |
-| AST | Abstract Syntax Tree | 抽象構文木（条件を木構造で表現） |
-| SA | Service Account | サービスアカウント |
-| TTL | Time To Live | キャッシュ等の有効期間 |
+略語・用語は [`../03-authorization/glossary.md`](../03-authorization/glossary.md) を参照（認可ドキュメント共通の正本）。
 
 ---
 
@@ -125,15 +99,11 @@ FastAPI 自身は認可機構を持たない（公式も「専用ライブラリ
 
 ### 4.2 認可エンジン／ポリシー
 
-| ライブラリ | 形態 | モデル | 行レベルフィルタ生成 | メモ |
-|---|---|---|---|---|
-| **Casbin（PyCasbin）** | 埋め込み（プロセス内） | ACL/RBAC/ABAC/ReBAC ほか（PERM メタモデル） | △（マッチャで属性判定は可、WHERE 生成は弱い） | `fastapi-casbin-auth`（ミドルウェア）/ `casbin-fastapi-decorator`（デコレータ）。多言語同一 API。低レイテンシ |
-| **Cerbos** | 外部 PDP（別プロセス/サービス） | ABAC/RBAC（派生ロール）、CEL 条件、YAML ポリシー | **◎ PlanResources（Query Plan）**：ポリシーを部分評価して AST を返し、DB フィルタに翻訳。**Python は SQLAlchemy アダプタあり** | 行フィルタも列出力（マスク指示）もポリシー側で記述可。ステートレス |
-| **OPA（Open Policy Agent）** | 外部 PDP（別プロセス/サービス） | Rego で何でも | **◎ Compile API（部分評価）**：未知変数に依存する残余ポリシーを返し、SQL 述語に翻訳可 | CNCF。AuthZEN 1.0 の PDP として標準対応の動きあり |
-| **Cedar（AWS）** | ライブラリ／マネージド（Verified Permissions） | RBAC/ABAC | 部分評価あり | 検証（formal verification）に強い独自言語。マネージドは AWS 寄りで閉域 Azure とは相性に注意 |
-| **Oso** | ライブラリ／Oso Cloud | RBAC/ABAC/ReBAC（Polar 言語） | データフィルタ機能あり | 近年は **Oso Cloud（マネージド）中心**に軸足。自己ホスト前提なら Casbin/Cerbos の方が素直 |
-| **py-abac / Vakt** | 埋め込み | ABAC（XACML 風） | △ | 純 Python の ABAC。小規模・自己完結向け |
-| **OpenFGA / SpiceDB** | 外部サービス | ReBAC（Zanzibar） | 関係クエリ | 将来 ReBAC を採るとき |
+各エンジン（PyCasbin / Cerbos / OPA / Cedar / Oso / OpenFGA / py-abac …）の形態・モデル・行/列フィルタ生成可否・ライセンス・FastAPI 連携の詳細比較は [`abac-authz-library-comparison.md`](abac-authz-library-comparison.md) に集約した（**採用は PyCasbin 埋め込み**）。本節の FastAPI 実装観点での要点は次のとおり。
+
+- **埋め込み（PyCasbin / py-abac）**: 純 Python・プロセス内・追加サービス不要。WHERE 生成は持たず自前補完。
+- **外部 PDP（Cerbos / OPA）**: `PlanResources` / `Compile API` でポリシー → 条件 AST を返し DB フィルタへ翻訳できる（行レベル生成の双璧）。
+- **ReBAC（OpenFGA / SpiceDB）**: 起票者・組織ツリーが支配的になった将来の選択肢。
 
 ### 4.3 今回の肝：「行レベル＝ポリシーからフィルタを生成」パターン
 

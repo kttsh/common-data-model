@@ -115,7 +115,7 @@ API で公開するテーブルは Order / Requisition / Invoice / Man Hour … 
 
 ---
 
-## 4. リポジトリ構成（清書）
+## 4. リポジトリ構成
 
 PDP を**埋め込み**にしたため、ポリシー本体は API の成果物に同梱される。よってポリシーは api リポジトリ内に置き、`src/authz/policies/` のみ CODEOWNERS でセキュリティ担当所有とする。
 
@@ -146,7 +146,7 @@ dataform/
     └── promote.yml                 # 承認ゲートで stg→prod（同一commit・CLI）
 ```
 
-責務: BigQuery のデータモデル定義・変換・品質保証（assertions）と、その BigQuery へのデプロイ。`outputs/<entity>` が API の公開面に対応する。
+責務: BigQuery のデータモデル定義・変換・品質保証（assertions）と、その BigQuery へのデプロイ。`outputs/<entity>` が API の公開面に対応する。上の図はリポジトリ分割・CI の観点で示したもので、**層構造（sources/intermediate/outputs）・ファイル名・命名規約の詳細は [`../06-data-platform/dataform-naming-convention.md`](../06-data-platform/dataform-naming-convention.md) が正本**。
 
 ### repo: `api`（FastAPI + 埋め込み PEP/PDP → Azure App Service）
 
@@ -266,13 +266,7 @@ feature → PR(CI) → main
 
 **例外: 緊急 prod hotfix**
 
-トランクベースでは main が prod より先行して未検証変更を含むことがあるため、hotfix の切り出し元を場合分けする。
-
-- 通常（main HEAD ≒ prod 相当）: `hotfix/*` を main から切る。
-- main が先行して未検証変更を含む場合: **prod に出ているコミット（= prod タグ）から `hotfix/*` を切る**。最小修正で新成果物を作り prod へ（dev/stg は fast-track 検証）。完了後に main へ back-merge して dev/stg を退行させない。
-- いずれも必ずパイプライン経由。環境（BigQuery テーブルや App Service 実体）の直接編集はしない。
-
-詳細は後述する。
+hotfix の切り出し元（main から切るか、prod タグから切るか）の場合分けは [§10.5 hotfix の扱い（精密版）](#105-hotfix-の扱い精密版) に集約。いずれも必ずパイプライン経由で、環境（BigQuery テーブルや App Service 実体）の直接編集はしない。
 
 ### 6.5 なぜこの原則か
 

@@ -3,7 +3,7 @@
 > スコープ: 認可機構（PEP/PDP）の世の中のプラクティス、自前実装とライブラリの比較、代表エンジンのポリシー記述例
 > 情報時点: 2026 年 5 月
 > 前提: 認証=Entra ID、認可属性=Open-GIM、データ=BigQuery、API=FastAPI/App Service、入口=Azure API Management
-> **決定（整合）**: 本書は**調査・比較メモ**。認可エンジンは **PyCasbin（埋め込み）で確定**済み（`abac-authz-library-comparison.md`、`../03-authorization/pycasbin/`）。本書に並ぶ Cerbos / OPA / Cedar / OpenFGA は比較対象・将来オプションであり、現時点の採用ではない（PEP=自前、行フィルタ翻訳層=自前 の方針は採用方針と一致）。
+> **位置づけ**: 調査・比較の生記録。採用決定は別ドキュメントが正本（**PyCasbin 埋め込み**＝ [`abac-authz-library-comparison.md`](abac-authz-library-comparison.md)）。本書に並ぶ Cerbos / OPA / Cedar / OpenFGA は比較対象・将来オプション。
 
 ---
 
@@ -95,48 +95,12 @@ PEP 自体はアプリ言語で自前実装するのが標準。PDP 側のクラ
 
 ### 1.3 ライブラリ比較（2026 年版）
 
-#### 主要エンジン一覧
+各エンジンの形態・モデル・ポリシー言語・部分評価/Query Plan・AuthZEN 対応・ライセンス・Python 統合の比較表と個別評価は [`abac-authz-library-comparison.md`](abac-authz-library-comparison.md) に集約した（採用は **PyCasbin 埋め込み**）。本書（PEP/PDP 設計）の観点で要点だけ再掲する。
 
-| ライブラリ | ライセンス | モデル | ポリシー言語 | 部分評価/Query Plan | AuthZEN 1.0 | デプロイ | Python 統合 |
-|---|---|---|---|---|---|---|---|
-| **Cerbos** | Apache 2.0 | RBAC/ABAC | YAML + CEL | ◎ `PlanResources` | ○ | 別プロセス／ePDP | SDK あり、SQLAlchemy アダプタあり |
-| **OPA** | Apache 2.0 | 何でも（汎用） | Rego (Datalog 系) | ◎ `Compile API` | ◎（公式対応進行中） | サイドカー／別ホスト | REST 経由、SDK あり |
-| **Cedar / AWS Verified Permissions** | Apache 2.0（Cedar） | RBAC/ABAC | Cedar | ○ | ○ | ライブラリ／マネージド（AWS） | SDK あり |
-| **OpenFGA** | Apache 2.0（CNCF） | ReBAC（Zanzibar） | OpenFGA DSL | △（関係クエリ） | ○ | 別プロセス | SDK あり |
-| **SpiceDB (Authzed)** | Apache 2.0 | ReBAC（Zanzibar） | SpiceDB スキーマ | △ | ○ | 別プロセス／マネージド | SDK あり |
-| **Casbin (PyCasbin)** | Apache 2.0 | ACL/RBAC/ABAC/ReBAC | CONF + マッチャ式 | × | × | 埋め込み（プロセス内） | ネイティブ、`fastapi-casbin-auth` 等 |
-| **Oso** | Apache 2.0／商用 | RBAC/ABAC/ReBAC | Polar | ○ | △ | ライブラリ／マネージド | SDK あり |
-| **py-abac / Vakt** | Apache 2.0 | ABAC（XACML 系） | JSON | △ | × | 埋め込み | ネイティブ Python |
-| **Keycloak (AuthZEN PDP)** | Apache 2.0 | RBAC/ABAC | Keycloak Authorization Services | - | ○（実験） | 別サービス | REST |
-
-#### 主要エンジンの詳細評価
-
-**Cerbos**
-- 行レベルフィルタ（条件 AST）、列マスキング、列アクセスチェックを 1 つのポリシーで宣言可能。
-- アダプタは Prisma / Drizzle / SQLAlchemy / Convex / ChromaDB（RAG）等に拡大。
-- 強み: 開発者 UX（YAML + CLI + Playground）、ステートレス、サブミリ秒レイテンシ、ePDP で配布可。
-- 弱み: 汎用ではないので Kubernetes Admission 等の用途には不向き。**BigQuery アダプタは公式に無く自作必要**。
-
-**OPA**
-- 強み: CNCF 卒業、Kubernetes 標準、Rego の表現力。
-- 弱み: Rego は Datalog 系の構文で学習コスト大。本番運用にはポリシー更新配信、バージョン管理、ステータス集約モニタリングを自前で整備する必要がある。
-- AuthZEN 対応進行中で、既存 Rego をそのまま使える PDP として将来性は高い。
-
-**Cedar / AWS Verified Permissions**
-- 強み: verification-guided development、宣言性の高い構文、Cognito 連携。
-- 弱み: AWS 寄り、閉域 Azure 構成には適合しにくい。
-
-**OpenFGA / SpiceDB**
-- ReBAC（関係ベース）専用。OpenAI が SpiceDB で数百億件の権限を捌いている実績。
-- 「役職・所属・居住地などの属性で行/列を出し分ける」要件は ABAC で素直に表現可能。ReBAC は「起票者単位の権限」「組織ツリー巡回」が支配的になってきた将来の選択肢。
-
-**Casbin (PyCasbin)**
-- 強み: 完全埋め込み・低レイテンシ・追加サービス不要・多言語対応・FastAPI 統合。
-- 弱み: 行レベルフィルタの **WHERE 生成は弱い**。Cerbos/OPA のような Query Plan 機能がない。
-
-**Oso**
-- 強み: Polar 言語の表現力、データフィルタリング機能。
-- 弱み: 商用化が進み Oso Cloud（マネージド）中心の戦略。自己ホスト前提だと選択肢としての勢いが弱まっている。
+- **Cerbos / OPA** … `PlanResources` / `Compile API` で「ポリシー → 条件 AST」を返せる。行レベルフィルタ生成の双璧（BigQuery アダプタは無く翻訳層は自作）。
+- **PyCasbin** … 完全埋め込み・低レイテンシ・追加サービス不要・FastAPI 統合が厚い。一方で WHERE 生成は持たず自前補完。
+- **OpenFGA / SpiceDB** … ReBAC 専用。起票者・組織ツリーが支配的になった将来の選択肢。
+- **Cedar / Verified Permissions** … verification-guided development が強み。AWS 寄りで閉域 Azure とは相性に注意。
 
 ### 1.4 自前実装 vs ライブラリ（決定指針）
 
@@ -251,6 +215,8 @@ Subject（principal）         Resource（purchase_order）
 3. **自分の部下が起票** … `resource.creator_id ∈ subject.subordinate_ids`
 
 ### 3.1 PyCasbin（埋め込み・ABAC モデル）
+
+> ここでは他エンジンと同じ題材で**書き味を横並び比較**するための最小例を示す。採用エンジンとしての PyCasbin の実装（`row_scope` 方式・属性辞書・BQ 展開）は [`../03-authorization/pycasbin/`](../03-authorization/pycasbin/) が正本。
 
 **model.conf**
 
