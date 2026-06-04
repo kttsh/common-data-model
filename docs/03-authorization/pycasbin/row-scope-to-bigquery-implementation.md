@@ -43,12 +43,12 @@ flowchart TD
 
 ## 3. 前方一致を範囲比較に展開する
 
-`department_code` の「同じ部か」は前方一致（プレフィックス）で判定するが、`STARTS_WITH` / `LIKE` はクラスタ列を関数で包むため block pruning が効かない（親ドキュメント §2.1）。そこで前方一致を閉区間 `[lo, hi]` に展開する。
+`department_code` の「同じ部か」は前方一致（プレフィックス）で判定するが、`STARTS_WITH` / `LIKE` はクラスタ列を関数で包むため block pruning が効かない（親ドキュメント §2.3）。そこで前方一致を閉区間 `[lo, hi]` に展開する。
 
 ```python
 DEPT_CODE_LEN = 12  # department_code は12桁固定
 
-# 組織階層 → 前方一致の桁数（親ドキュメント §2.1）
+# 組織階層 → 前方一致の桁数（親ドキュメント §2.3）
 DEPT_LEVEL_DIGITS = {
     "domain": 2, "division": 4, "section": 6,   # section = 部
     "group": 8, "team": 10, "squad": 12,
@@ -134,7 +134,7 @@ def build_list_query(decision: Decision) -> tuple[str, list]:
         scope_clause = "FALSE"
 
     # ② 関係外秘の基底フィルタ（全ロール共通で必ず AND）。行ごとに変わる
-    #    confidentiality は row_scope では選べないため、ここで処理する（親 §6.7）。
+    #    confidentiality は row_scope では選べないため、ここで処理する（親 §3.6）。
     put(bigquery.ScalarQueryParameter("subject_id", "STRING", decision.subject_id))
     restricted_clause = (
         "(confidentiality != 'restricted' "

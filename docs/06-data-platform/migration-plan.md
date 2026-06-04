@@ -1,13 +1,13 @@
 # Dataform 既存リポジトリ改造プラン
 
-`ai-driven-comod-cdem`（全ブランチを統合した `main`）を、`repo-strategy.md` で定めた**あるべき姿**へ移行する手順。破壊を避ける**順番**と、トランクベースの**ブランチステップ**をまとめる。
+`ai-driven-comod-cdem`（全ブランチを統合した `main`）を、`../02-architecture/repository-strategy.md` で定めた**あるべき姿**へ移行する手順。破壊を避ける**順番**と、トランクベースの**ブランチステップ**をまとめる。
 
 - 作成日: 2026-06-03
-- 改訂日: 2026-06-04（`repo-strategy.md` 準拠へ全面改稿。ネイティブ前提を CLI 路線へ変更）
+- 改訂日: 2026-06-04（`../02-architecture/repository-strategy.md` 準拠へ全面改稿。ネイティブ前提を CLI 路線へ変更）
 - ステータス: ドラフト（実行手順）
-- 関連: `repo-strategy.md`（上位設計：リポジトリ戦略・3 ランドスケープ昇格・運用・ブランチ戦略）、`dataform-naming-convention.md`（命名・層）
+- 関連: `../02-architecture/repository-strategy.md`（上位設計：リポジトリ戦略・3 ランドスケープ昇格・運用・ブランチ戦略）、`dataform-naming-convention.md`（命名・層）
 - 前提: **CLI 路線**（ローカル CLI 手打ち → Step 2 で GitHub Actions の CLI 実行）。GCP 側 Dataform リポジトリは作らず BigQuery 直叩き。環境差はデプロイ時の **CLI コンパイラオプション**（`--default-database` 等）で注入。認証は**鍵レス**（WIF＋ADC）。
-- 旧前提からの変更: かつての「GCP ネイティブ（release configuration のプロジェクトオーバーライド＋strict act-as カスタム SA）」は採用しない。`repo-strategy.md` §7 が CLI 路線を採ったため、release/workflow configuration と strict act-as カスタム SA は本プランから撤去した。
+- 旧前提からの変更: かつての「GCP ネイティブ（release configuration のプロジェクトオーバーライド＋strict act-as カスタム SA）」は採用しない。`../02-architecture/repository-strategy.md` §8（運用の初期メモ＝Dataform は CLI 方式）が CLI 路線を採ったため、release/workflow configuration と strict act-as カスタム SA は本プランから撤去した。GCP ネイティブ案の記録は `dataform-operating-model.md`（不採用）に残す。
 
 ---
 
@@ -45,7 +45,7 @@ ai-driven-comod-cdem/
 
 ## 2. あるべき姿（to-be）— 要約
 
-単一リポジトリ・3 層構造・小文字 snake_case・環境差は CLI コンパイラオプション・鍵レス（WIF＋ADC）。リポジトリ完成形は `repo-strategy.md` §3 の `dataform` リポジトリ構成を参照。
+単一リポジトリ・3 層構造・小文字 snake_case・環境差は CLI コンパイラオプション・鍵レス（WIF＋ADC）。リポジトリ完成形は `../02-architecture/repository-strategy.md` §3 の `dataform` リポジトリ構成を参照。
 
 本プランは**プラットフォーム別分割（`dataform` / `api` / `data-contracts`）のうち `dataform` リポジトリ単体**の移行を対象とする（戦略 §2）。下流（API `repository.py` / BI）との契約突き合わせは、採用するなら `data-contracts` 経由で行う（戦略 §6）。
 
@@ -72,7 +72,7 @@ ai-driven-comod-cdem/
 
 ## 4. フェーズ（順番）と Step マッピング
 
-`repo-strategy.md` のロードマップ（Step 1 手動 → Step 2 CLI/Actions → Step 3 Terraform）に従い、本プランの Phase 0〜5 は **Step 1（手動・ローカル CLI 手打ち）で構造集約を完結**させる。CI 自動デプロイ・stg/prod 昇格・WIF・Terraform は Step 2／Step 3 に分離する。
+`../02-architecture/repository-strategy.md` のロードマップ（Step 1 手動 → Step 2 CLI/Actions → Step 3 Terraform）に従い、本プランの Phase 0〜5 は **Step 1（手動・ローカル CLI 手打ち）で構造集約を完結**させる。CI 自動デプロイ・stg/prod 昇格・WIF・Terraform は Step 2／Step 3 に分離する。
 
 ### Phase 0 — 確認・準備（破壊なし）【Step 1】
 - 目的: 事故要因の洗い出し。
@@ -184,6 +184,6 @@ ai-driven-comod-cdem/
 
 ## 参考
 
-- 上位設計: `repo-strategy.md`（リポジトリ戦略 §2、構成 §3、スケーリング §4、昇格・修正フロー §5、契約 §6、運用 §7、ブランチ §8）
+- 上位設計: `../02-architecture/repository-strategy.md`（分割案 §3、構成 §4、スケーリング §5、昇格・修正フロー §6、契約 §7、運用 §8、ブランチ §10）
 - 命名・層構造: `dataform-naming-convention.md`
-- Dataform 一次情報（CLI／コンパイラオプション／strict act-as 等）は `repo-strategy.md` の「参考」を参照
+- Dataform 一次情報（CLI／コンパイラオプション／strict act-as 等）は `../02-architecture/repository-strategy.md` の「参考」を参照

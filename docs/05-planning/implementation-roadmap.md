@@ -15,7 +15,7 @@
 1. Confirm Proxy specifications and run an App Service to BigQuery connectivity PoC.
 2. Confirm App Service plan constraints, Linux/Windows constraints, and deployment slot availability.
 3. Confirm existing APIM Product/Subscription naming and tenancy rules.
-4. Confirm OpenGIM / on-prem SQL Server schema, join key from Entra ID, and available authorization attributes.
+4. Confirm Open-GIM / on-prem SQL Server schema, join key from Entra ID, and available authorization attributes.
 5. ~~Finalize runtime/framework choice~~ **(done: Python / FastAPI)** and define the OpenAPI workflow (FastAPI 3.1 output -> downgrade to 3.0 for APIM import).
 6. Design the authorization policy format and AST-to-BigQuery translation layer.
 7. Define audit log schema, especially subject/action/resource, decision reason, and applied filter.
@@ -24,7 +24,7 @@
 
 1. `/healthz` endpoint and OpenAPI publication.
 2. APIM -> App Service -> BigQuery via Proxy latency measurement.
-3. Entra ID JWT verification -> OpenGIM attribute lookup -> authorization decision.
+3. Entra ID JWT verification -> Open-GIM attribute lookup -> authorization decision.
 4. Row-level filter generation and parameterized BigQuery query execution.
 5. Column mask application and audit logging.
 6. APIM built-in cache and process-local LRU cache behavior measurement.
@@ -33,7 +33,7 @@
 
 - `../02-architecture/runtime-framework-decision.md`: **runtime/framework decision (Python / FastAPI, resolved 2026-06)**.
 - `../04-research/api-runtime-framework-comparison-2026.md`: runtime/framework comparison (research input behind the decision above).
-- `../04-research/ci-cd-delivery-research-2026.md`: Harness, CI/CD, SBOM, STO, SRM.
+- `../04-research/ci-cd-delivery-research-2026.md`: CI/CD・SBOM・STO・SRM 調査（**Harness 一式は採用見送り＝調査資料**。実装は **GitHub Actions** を採用）。
 - `../04-research/authorization-models-and-standards-2026.md`: ABAC/PBAC/AuthZEN/RFC background.
 - `../02-architecture/repository-structure-options.md`: source tree options by runtime.
 
@@ -43,11 +43,11 @@
 
 1. **Phase 0(チーム前提整理・1〜2週間)**
    - 言語・FW は **Python / FastAPI に確定済み**(`../02-architecture/runtime-framework-decision.md`)。スキルセット棚卸しは「Python/FastAPI への習熟度・OpenAPI スキーマファースト運用」に観点を移す。.NET 経験者が大半など分布が大きく偏った場合のみ再検討トリガーとして扱う。
-   - Bicep / Terraform の社内方針確認 → Harness IaCM を使う前提なら Terraform に揃える決定を最初に取る(後戻り高コスト)。
+   - Bicep / Terraform の社内方針確認 → IaC 方針(Terraform 推奨)を最初に決める(後戻り高コスト)。
 2. **Phase 1(PoC・4〜6週間)**
    - 選定言語で最小エンドポイント(`/healthz` + BigQuery 簡易クエリ + Entra ID JWT 検証)を実装、App Service Linux にデプロイ。
-   - Harness パイプライン雛形(.harness/pipelines/build.yaml + deploy.yaml)を1本動かす(Slot Deployment + Swap Slot)。
-   - OPA サイドカーまたは言語ネイティブ Casbin で ABAC を1ルールだけ通す。
+   - GitHub Actions の CI/CD 雛形(.github/workflows/ci.yml + deploy-dev.yml)を1本動かす(build → ACR push → App Service デプロイスロット swap)。Harness は採用見送り(`../04-research/ci-cd-delivery-research-2026.md`、将来比較用)。
+   - PyCasbin(埋め込み)で ABAC を1ルールだけ通す(`../03-authorization/pycasbin/`)。
 3. **Phase 2(本格構築・8〜12週間)**
    - STO(Trivy + Snyk + Spectral + Schemathesis)を CI に組込み、SBOM を ACR に署名付きで push。
    - SRM の Azure Log Analytics ヘルスソース連携、SLO 99.9% + エラーバジェット連動 Canary ロールバック。

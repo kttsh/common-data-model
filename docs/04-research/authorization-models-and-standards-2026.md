@@ -2,7 +2,7 @@
 
 > ステータス: 調査メモ（世の中のプラクティス）
 > Purpose: Research backing for `../03-authorization/authorization-strategy.md`, especially SQL governance, OBO/service identity, and audit logging.
-> 前提: 認証=Entra ID、認可属性=OpenGIM（社内ユーザーリポジトリ）、データ=BigQuery、実行基盤=FastAPI + App Service
+> 前提: 認証=Entra ID、認可属性=Open-GIM（社内ユーザーリポジトリ）、データ=BigQuery、実行基盤=FastAPI + App Service
 > 情報時点: 2026年5月
 
 ---
@@ -68,7 +68,7 @@
 | 行レベル：自部門のみ／主席・部長以上は全社、など属性しきい値依存 | **ABAC** | 役職レベル・所属・居住地などの属性で動的に WHERE を決める典型例 |
 | 行レベル：起票者単位（自分が起票したレコードのみ） | ABAC でも ReBAC でも可 | `@item.creator == subject.id` で ABAC 表現可。関係が増えるなら ReBAC 部分採用の余地 |
 | 列レベル：原価・単価・個人情報のマスク | **ABAC** | 属性に応じて返す列／マスクする列を決める |
-| 異動時に自動追従（棚卸不要） | **ABAC ＋ 最新属性ソース** | 属性が最新（OpenGIM が最新）なら判定も自動追従。鮮度は属性ソース依存 |
+| 異動時に自動追従（棚卸不要） | **ABAC ＋ 最新属性ソース** | 属性が最新（Open-GIM が最新）なら判定も自動追従。鮮度は属性ソース依存 |
 | モデル単位の入口制御（このモデルは全社可／人事のみ） | RBAC 的 ／ ABAC | 「モデルごとのデフォルト権限」は粗い RBAC 層として表現できる |
 
 **結論（モデル選定の叩き）**

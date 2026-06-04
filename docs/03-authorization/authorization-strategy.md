@@ -5,7 +5,7 @@
 > 用途: チーム内ディスカッション（API・データモデルの権限管理）
 > 前提: データソースは BigQuery、実行基盤は FastAPI + App Service / Functions、DAB は不採用方針
 > Note: **FastAPI は採用決定済み（2026-06）**。選定理由は `../02-architecture/runtime-framework-decision.md` を参照。
-> 用語: **OpenGIM = 社内ユーザーリポジトリ**（役職・所属など認可属性の正本。Entra ID には当該属性が無いため別途参照する）
+> 用語: **Open-GIM = 社内ユーザーリポジトリ**（役職・所属など認可属性の正本。Entra ID には当該属性が無いため別途参照する）
 
 ---
 
@@ -39,16 +39,16 @@
 - 叩き台②は「Entra ID から人事情報（役職・所属）を取得」「Entra ID は最新人事と紐づくため棚卸不要」としている。
 - 実際の Entra ID が持つのは ID・メール・せいぜいグループ程度で、原価センタ・職位・事業単位などの認可に必要な粒度は入っていない。
 - `docs/01-requirements/product-requirements.md` でも「ユーザー属性はオンプレ SQL Server に実装・運用」と明記。
-- **実態**: ID（認証）は Entra ID、認可属性は社内ユーザーリポジトリ（OpenGIM）を実行時に別途参照する二段構え。
-- **影響**: 「棚卸不要」の根拠が変わる。鮮度は Entra ID ではなく OpenGIM の鮮度に依存する。
+- **実態**: ID（認証）は Entra ID、認可属性は社内ユーザーリポジトリ（Open-GIM）を実行時に別途参照する二段構え。
+- **影響**: 「棚卸不要」の根拠が変わる。鮮度は Entra ID ではなく Open-GIM の鮮度に依存する。
 - → 明日の最大論点。
 
-### ② OpenGIM（社内ユーザーリポジトリ）の参照方式・正本範囲を確定する
+### ② Open-GIM（社内ユーザーリポジトリ）の参照方式・正本範囲を確定する
 
-- **確定事項**: OpenGIM ＝ 社内ユーザーリポジトリ。役職・所属など認可に使う属性の正本はここ。叩き台②の「Entra ID から人事情報を取得」は、正しくは「Entra ID で認証 → OpenGIM から属性取得」。
+- **確定事項**: Open-GIM ＝ 社内ユーザーリポジトリ。役職・所属など認可に使う属性の正本はここ。叩き台②の「Entra ID から人事情報を取得」は、正しくは「Entra ID で認証 → Open-GIM から属性取得」。
 - **残る確認事項**:
-  - OpenGIM と `docs/01-requirements/product-requirements.md` が言う「オンプレ SQL Server（ExpressRoute 接続）」は同一か別物か。同一なら接続経路はそのまま、別物なら OpenGIM への到達経路（プロトコル・認証・閉域到達性）を定義する。
-  - OpenGIM が保持する属性項目（役職レベルの区分、所属＝会社/部署/グループ、原価センタ、居住地など）の一覧と、各項目のキー（Entra ID の oid / UPN など何で突合するか）。
+  - Open-GIM と `docs/01-requirements/product-requirements.md` が言う「オンプレ SQL Server（ExpressRoute 接続）」は同一か別物か。同一なら接続経路はそのまま、別物なら Open-GIM への到達経路（プロトコル・認証・閉域到達性）を定義する。
+  - Open-GIM が保持する属性項目（役職レベルの区分、所属＝会社/部署/グループ、原価センタ、居住地など）の一覧と、各項目のキー（Entra ID の oid / UPN など何で突合するか）。
 - これが認可設計（ABAC のポリシー入力）の前提になる。
 
 ### ③ 「SQL ライク（WHERE / SELECT）条件設定」は設計リスクが大きい
@@ -57,7 +57,7 @@
 - (a) 参照先の DAB は今回不採用（`../02-architecture/data-api-builder-assessment.md` 参照）。
 - (b) モデルオーナーが生 SQL 風の述語を自由記述する形は、インジェクション・正しさの検証・レビュー・変更履歴管理が難しい。
 - (c) 「SELECT による列制御」の実体は列の許可/拒否リスト。自由 SQL ではなく統制された記法（ポリシー定義フォーマット）にすべき。
-- → `docs/02-architecture/platform-architecture-decision.md` の D2（OPA / Cedar 等のポリシーエンジン比較）と接続させる。
+- → `../02-architecture/platform-architecture-decision.md` の D2（認可エンジン選定。**PyCasbin 埋め込みで確定**）と接続。統制された記法は PyCasbin の PERM モデル＋ポリシー（`pycasbin/`）で実現する。
 
 ### ④ 「申請なし・全社デフォルト権限」と監査・最小権限の緊張
 
@@ -96,8 +96,8 @@
 
 ## Next Discussion Points
 
-1. **①Entra ID 属性問題**: 認証は Entra ID、認可属性は OpenGIM（社内ユーザーリポジトリ）という二段構えで合意できるか。OpenGIM の参照方式・属性項目・突合キーの確定（②）。
-2. **③SQL ライク条件の統制方法**: 自由 SQL ではなく、レビュー可能なポリシー定義フォーマット（ABAC / OPA / Cedar）に倒せるか。
+1. **①Entra ID 属性問題**: 認証は Entra ID、認可属性は Open-GIM（社内ユーザーリポジトリ）という二段構えで合意できるか。Open-GIM の参照方式・属性項目・突合キーの確定（②）。
+2. **③SQL ライク条件の統制方法**: 自由 SQL ではなく、レビュー可能なポリシー定義フォーマットに倒す。**エンジンは PyCasbin（埋め込み）で確定**（`pycasbin/`）。外部 PDP（Cerbos/OPA）は将来オプション。
 3. **⑤T ユーザー／AI エージェントの認可**: OBO かサービス ID 固定かの切り分け。
 4. **④デフォルト権限の言い換え**: 「入口開放＋行列制御常時適用」で合意。
 5. ランタイムは App Service 主・Functions 補助で確定。**言語・FW は Python / FastAPI に確定**（`../02-architecture/runtime-framework-decision.md`）。

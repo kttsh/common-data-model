@@ -2,7 +2,7 @@
 
 > ステータス: 調査メモ（アーキテクチャ判断材料）
 > スコープ: **読み取り（GET）系の行方向フィルタリング**の層配置
-> 前提: 認証=Entra ID、認可属性=OpenGIM（社内ユーザーリポジトリ）、データ=BigQuery、API=FastAPI/App Service、**API→BigQuery は単一サービスアカウント（SA）でアクセス**
+> 前提: 認証=Entra ID、認可属性=Open-GIM（社内ユーザーリポジトリ）、データ=BigQuery、API=FastAPI/App Service、**API→BigQuery は単一サービスアカウント（SA）でアクセス**
 > Related: `authorization-strategy.md`, `../04-research/authorization-models-and-standards-2026.md`
 > 情報時点: 2026年5月
 
@@ -50,7 +50,7 @@
       ▼
 [FastAPI / App Service]
    - Entra ID で本人特定
-   - OpenGIM から認可属性取得（役職・所属・居住地・原価センタ…）
+   - Open-GIM から認可属性取得（役職・所属・居住地・原価センタ…）
    - ABAC ポリシー評価 → フィルタ条件を生成
    - 単一 SA で BigQuery にパラメータ化クエリ
       ▼
@@ -79,7 +79,7 @@ APIM はゲートウェイであり、得意なのは認証検証・スロット
 
 ### 2.3 FastAPI / App Service 層 → ここが per-user 行制御の主役
 
-端末ユーザーの属性（部署・役職・居住地・起票者）を持てるのはこの層だけなので、必然的にここが**判断点（PDP/PEP）**になる。流れは、Entra ID で本人特定 → OpenGIM で属性取得 → ABAC ポリシー評価 → **フィルタ条件を生成** → BigQuery にパラメータ化 WHERE として渡す。
+端末ユーザーの属性（部署・役職・居住地・起票者）を持てるのはこの層だけなので、必然的にここが**判断点（PDP/PEP）**になる。流れは、Entra ID で本人特定 → Open-GIM で属性取得 → ABAC ポリシー評価 → **フィルタ条件を生成** → BigQuery にパラメータ化 WHERE として渡す。
 
 生成は自由 SQL ではなく、前回調査の方式（**Cerbos PlanResources／OPA Compile の部分評価 → AST → BigQuery SQL への翻訳**）で行う。これにより「オーナーが書くのは宣言的ポリシー、SQL を組み立てるのは翻訳層」という分離ができ、インジェクション・検証・レビューの問題（論点③）を構造的に解消できる。
 
@@ -98,7 +98,7 @@ APIM はゲートウェイであり、得意なのは認証検証・スロット
 | 層 | 行絞り込みにおける責務 |
 |---|---|
 | **APIM** | 認証（JWT）検証・スロットル・粗いキャッシュ。**行絞り込みはしない** |
-| **FastAPI / App Service** | **判断（ABAC）** と **WHERE 生成（パラメータ化）**。列マスクの適用。監査（適用した条件の記録）。属性は OpenGIM 参照＋短 TTL キャッシュ |
+| **FastAPI / App Service** | **判断（ABAC）** と **WHERE 生成（パラメータ化）**。列マスクの適用。監査（適用した条件の記録）。属性は Open-GIM 参照＋短 TTL キャッシュ |
 | **BigQuery** | **執行**（押し下げ WHERE を実行）。加えて **認可ビュー／認可データセット**で共通モデル公開・SA 最小権限・生テーブル隠蔽、**パーティション／クラスタ**で安く効かせる、**CLS** で保存層の多層防御 |
 
 ```
@@ -119,7 +119,7 @@ APIM はゲートウェイであり、得意なのは認証検証・スロット
 ## 6. キャッシュとの関係（`../02-architecture/platform-architecture-decision.md` と整合）
 
 - per-user の WHERE が付くレスポンスは共有キャッシュのヒット率が低い（R2）。**キャッシュは共通参照系（マスタ・スキーマ・公開メタデータ）に限定**し、per-user 結果は短 TTL／プロセス内に留める。
-- 属性（OpenGIM）はプロセス内 LRU で短 TTL キャッシュし、毎リクエストの問い合わせを避ける（R6）。
+- 属性（Open-GIM）はプロセス内 LRU で短 TTL キャッシュし、毎リクエストの問い合わせを避ける（R6）。
 
 ---
 

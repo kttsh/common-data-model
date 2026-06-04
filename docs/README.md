@@ -38,7 +38,7 @@
 
 API の元ネタとなる Dataform（→ BigQuery）のリポジトリ戦略・命名・運用・移行をまとめたトピック集約。
 
-- `06-data-platform/repository-strategy.md`: プラットフォーム全体のリポジトリ分割戦略（案 B 確定）・昇格フロー・ブランチ戦略。
+- `02-architecture/repository-strategy.md`: プラットフォーム全体のリポジトリ分割戦略（案 B 確定）・昇格フロー・ブランチ戦略。**Dataform デプロイは CLI 方式で確定**（02-architecture 配下に配置）。
 - `06-data-platform/dataform-naming-convention.md`: Dataform の構成・命名規約リファレンス（`sources`/`intermediate`/`outputs` 準拠）。
-- `06-data-platform/dataform-operating-model.md`: Dataform の GCP ネイティブ運用設計（単一リポジトリ＋release configuration オーバーライド）。到達点。
-- `06-data-platform/dataform-migration-plan.md`: あるべき姿への移行手順・トランクベースのブランチステップ。
+- `06-data-platform/dataform-operating-model.md`: Dataform の GCP ネイティブ運用設計の検討記録。**不採用**（CLI 路線へ変更されたため。最新は `repository-strategy.md` §8・`migration-plan.md`）。
+- `06-data-platform/migration-plan.md`: あるべき姿（CLI 路線）への移行手順・トランクベースのブランチステップ。

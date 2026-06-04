@@ -18,7 +18,7 @@
 | データソース | BigQuery（Proxy 経由アクセス） |
 | 認証 | Entra ID（OIDC + JWT、SA は Client Credentials / Managed Identity） |
 | 認可 | App Service 内で ABAC（行レベル: SQL WHERE 注入、列レベル: 整形時マスク） |
-| ユーザー属性参照 | オンプレ SQL Server（ExpressRoute） |
+| ユーザー属性参照 | Open-GIM（社内ユーザーリポジトリ。認可属性の正本。実体がオンプレ SQL Server と同一かは未確定論点。到達経路は ExpressRoute 想定） |
 | 監査ログ | Azure Log Analytics（Datadog 併設可） |
 
 ---
@@ -51,7 +51,7 @@
 | U1 | App Service のプラン制約（Basic/Standard/Premium、Linux/Windows） | プロセス内キャッシュ容量、スケール戦略、コールドスタート挙動に影響 |
 | U2 | Proxy 仕様（認証方式・対応プロトコル・BigQuery クライアント疎通可否） | 案A 成立性の根幹。設計初期で実機検証必須 |
 | U3 | 既存 APIM の Subscription/Product 運用ルール | マルチテナント設計の前提 |
-| U4 | オンプレ SQL Server の認可属性スキーマ | ABAC ポリシー設計の入力 |
+| U4 | Open-GIM（社内ユーザーリポジトリ）の認可属性スキーマ。実体がオンプレ SQL Server と同一かを含め確認 | ABAC ポリシー設計の入力 |
 
 ---
 
@@ -72,10 +72,10 @@
 [Azure App Service (Linux)]
    - OpenAPI 3.1 準拠 REST API
    - プロセス内 LRU キャッシュ (属性, マスタ, スキーマ)
-   - ABAC 認可ロジック (OPA 組込み or 軽量実装)
+   - ABAC 認可ロジック (PyCasbin 埋め込み PDP)
    - BigQuery クライアント (接続プール)
         │
-        ├─→ [オンプレ SQL Server] (ExpressRoute) ← ユーザー属性
+        ├─→ [Open-GIM 属性ストア] (ExpressRoute) ← ユーザー属性
         │
         └─→ [BigQuery] (Proxy 経由) ← 通常ビュー / 一部マテビュー
 ```
@@ -98,7 +98,7 @@
 | R3 | **APIM 組込みキャッシュは揮発性・APIM アップデート時クリア** | 長期キャッシュ前提の設計をしない。TTL は短く（秒〜分） |
 | R4 | **プロセス内キャッシュはインスタンス間で共有されない** | スケールアウト想定エンドポイントでは、共有が必要なデータをキャッシュしない。属性キャッシュは TTL を短く（30〜60 秒） |
 | R5 | **Proxy 障害時に API も停止**（ホットパスが BigQuery 依存） | Proxy 冗長性確認。BigQuery クライアントのリトライ/タイムアウト設計を厳密化 |
-| R6 | **属性参照のため SQL Server へ毎リクエスト問い合わせが発生** | プロセス内 LRU で属性をキャッシュ（TTL 短め）。SQL Server 側に Read レプリカがあれば活用 |
+| R6 | **属性参照のため Open-GIM へ毎リクエスト問い合わせが発生** | プロセス内 LRU で属性をキャッシュ（TTL 短め）。Open-GIM 側に Read レプリカがあれば活用 |
 
 ### 3.4 設計上の確定事項
 
@@ -106,7 +106,7 @@
 |---|---|
 | L1 複雑ロジック配置 | **BigQuery ビュー（基礎）+ 必要に応じてマテビュー（頻出統合モデル）+ API 層（ユーザー文脈依存の組み立て）** |
 | L2 キャッシュ配置 | **APIM 組込み + プロセス内 LRU のみ**。Redis 系は将来 C2 制約が緩和されるまで採用しない |
-| L3 行・列レベル制御 | **App Service 内 ABAC**。OPA（Rego）または軽量自前実装を比較。BigQuery RLS は補助的にも使わない（二重管理回避） |
+| L3 行・列レベル制御 | **App Service 内 ABAC**。エンジンは **PyCasbin（埋め込み）で確定**（→ `../04-research/abac-authz-library-comparison.md`、`../03-authorization/pycasbin/`）。外部 PDP（Cerbos/OPA）は将来オプション。BigQuery RLS は補助的にも使わない（二重管理回避） |
 | L4 ランタイム | **App Service（メイン API）+ Functions（任意で補助バッチ: マテビューウォーマー、Webhook 等）** |
 | L5 API 設計規約 | OpenAPI 3.1 準拠、リソース指向 REST、JSON レスポンス。具体規約（JSON:API / OData / 独自）は別途比較 |
 | L6 OpenAPI 連携 | スキーマファースト推奨（中央チームのガバナンスと AI 支援開発の双方に有利） |
@@ -259,7 +259,7 @@
 | 1 | **Proxy 仕様確認**（認証方式・対応プロトコル・BigQuery クライアント疎通実機検証） | **最高** | U2 |
 | 2 | **App Service プラン制約の確認**（Basic / Standard / Premium、Linux/Windows） | 高 | U1 |
 | 3 | **既存 APIM の Subscription / Product 運用ルール確認** | 高 | U3 |
-| 4 | **オンプレ SQL Server 認可属性スキーマ調査** | 高 | U4 |
+| 4 | **Open-GIM（認可属性ストア）スキーマ調査**（実体・到達経路がオンプレ SQL Server と同一かの確認含む） | 高 | U4 |
 | 5 | BigQuery エディション・予約状況確認 | 中 | - |
 | 6 | Entra ID テナント設定・SA 運用方針確認 | 中 | - |
 
@@ -268,7 +268,7 @@
 | # | 論点 | 内容 |
 |---|---|---|
 | D1 | 言語・FW 選定 | **【確定】Python / FastAPI を採用**（→ `runtime-framework-decision.md`）。AI 支援開発相性・エコシステム成熟度・App Service ネイティブ対応（2026 年強化）・BigQuery/Entra/認可ライブラリ成熟が決め手。Litestar / .NET 9 / Go・Huma は再検討トリガー付きで見送り |
-| D2 | ABAC 実装方式 | OPA 組込み（Rego ポリシー）vs 軽量自前実装 vs Cedar |
+| D2 | ABAC 実装方式 | **【確定】PyCasbin（埋め込み PDP）を採用**（→ `../04-research/abac-authz-library-comparison.md`、`../03-authorization/pycasbin/`）。外部 PDP（Cerbos/OPA）は将来オプション、`row_filter` 生成・列マスク・BigQuery 翻訳層は自前で補完 |
 | D3 | API 設計規約（L5） | JSON:API / OData / 独自 のページング・フィルタ表現比較 |
 | D4 | OpenAPI 連携方式（L6） | スキーマファースト vs コードファースト |
 | D5 | バージョニング戦略 | URI path（/v1/...）vs Header（Accept-Version） |
@@ -294,3 +294,4 @@
 |---|---|---|
 | 2026-05-26 | 1.0 | 案A 採用決定、案B/案C を将来比較用に保持 |
 | 2026-06-03 | 1.1 | 言語・FW を Python / FastAPI に確定（D1 クローズ、`runtime-framework-decision.md` 参照） |
+| 2026-06-04 | 1.2 | L3/D2 の認可エンジンを **PyCasbin（埋め込み）に確定**（外部 PDP は将来オプション）。認可属性ストアの正本呼称を **Open-GIM** に統一 |

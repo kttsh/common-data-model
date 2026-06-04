@@ -14,7 +14,7 @@
 | OpenAPI | 3.1（FastAPI のデフォルト出力）。APIM への取り込み時のみ 3.0 へダウングレードして投入 |
 | 起動方式 | `gunicorn -k uvicorn.workers.UvicornWorker`（FastAPI 自動検出が効く環境では起動コマンドを省略可） |
 | 認証 | Entra ID JWT 検証（`fastapi-azure-auth` / `msal` / `PyJWT`） |
-| 認可 | 埋め込み PEP/PDP（PyCasbin または自前 + CEL）から開始、AuthZEN 準拠インターフェース |
+| 認可 | **PyCasbin（埋め込み PEP/PDP）で確定**、AuthZEN 準拠インターフェース（外部 PDP〔Cerbos/OPA〕は将来オプション） |
 | デプロイ先 | Azure App Service（Linux）、`api` リポジトリ |
 
 ---
@@ -25,7 +25,7 @@
 
 - **アーキテクチャ確定事項**: App Service + 既存 APIM + APIM 組込みキャッシュ + プロセス内 LRU + BigQuery ビュー。
 - **ランタイム制約 C1**: バックエンドは Azure App Service / Functions のみ（Container Apps / AKS 不可）。メイン API は App Service。
-- **レイテンシ特性**: ホットパスは「Entra ID JWT 検証 → OpenGIM/SQL Server 属性参照 → BigQuery クエリ」で、待ち時間の支配項は外部 I/O。100〜500ms 目標もキャッシュヒット前提。
+- **レイテンシ特性**: ホットパスは「Entra ID JWT 検証 → Open-GIM/SQL Server 属性参照 → BigQuery クエリ」で、待ち時間の支配項は外部 I/O。100〜500ms 目標もキャッシュヒット前提。
 - **開発体制の第一指針**: Claude / Devin 等による AI 支援開発が機能しやすい、ドキュメント・コミュニティ・型情報が成熟したスタック。
 
 この前提下では、フレームワーク単体の生スループットは決定打にならない。支配的な評価軸は、エコシステム成熟度・AI 支援開発との相性・Azure ネイティブ運用の容易性である。
@@ -53,7 +53,7 @@
 
 - **BigQuery**: `google-cloud-bigquery`（同期）+ `google-cloud-bigquery-storage`（`BigQueryReadAsyncClient` で gRPC asyncio）。SDK は `HTTPS_PROXY` 環境変数を尊重するため、Proxy 経由アクセスはコード変更不要。
 - **Entra ID JWT**: `fastapi-azure-auth`（FastAPI 特化・チュートリアル充実）、`fastapi-microsoft-identity`、`msal`（Microsoft 純正、OBO 対応）、`PyJWT` / `Authlib` が揃う。
-- **認可**: 埋め込みの PyCasbin、外部 PDP の Cerbos / OPA（PlanResources / Compile API で行フィルタ AST を生成）まで選択肢が広い。AuthZEN 1.0 準拠の PEP を FastAPI で書く実装ガイドも 2026 年時点で整備済み。
+- **認可**: 埋め込みの PyCasbin、外部 PDP の Cerbos / OPA（PlanResources / Compile API で行フィルタ AST を生成）まで選択肢が広い。**本基盤は PyCasbin（埋め込み）を採用**し、外部 PDP は将来オプションとして残す。AuthZEN 1.0 準拠の PEP を FastAPI で書く実装ガイドも 2026 年時点で整備済み。
 
 ### OpenAPI 3.1 スキーマファーストとの整合
 

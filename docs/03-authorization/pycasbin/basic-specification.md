@@ -29,10 +29,10 @@ PyCasbin が担うもの:
 PyCasbin が担わないもの:
 
 - 認証。Entra ID / OIDC / JWT 検証は別レイヤで行う。
-- ユーザー台帳・ロール台帳そのものの管理。OpenGIM 等の正本は別に持つ。
+- ユーザー台帳・ロール台帳そのものの管理。Open-GIM 等の正本は別に持つ。
 - BigQuery 向け SQL WHERE 句の生成。
 - 列レベルマスキングの適用。
-- OpenGIM など外部 PIP からの属性取得。
+- Open-GIM など外部 PIP からの属性取得。
 
 ---
 
@@ -63,7 +63,7 @@ if decision.effect == "deny":
 where, params = compile_to_bigquery(decision.row_filter)
 ```
 
-PyCasbin は上記のうち、主に `authorize()` 内の allow/deny 判定を担う。`row_filter` と `masked_columns` は、PyCasbin の判定結果・OpenGIM 属性・モデルメタデータを使って本プロジェクト側で組み立てる。
+PyCasbin は上記のうち、主に `authorize()` 内の allow/deny 判定を担う。`row_filter` と `masked_columns` は、PyCasbin の判定結果・Open-GIM 属性・モデルメタデータを使って本プロジェクト側で組み立てる。
 
 ---
 
@@ -218,7 +218,7 @@ p, r.sub.job_level >= 5 && r.sub.department == r.obj.department, department_cost
 p, r.sub.role == "finance_admin", department_cost, read
 ```
 
-本プロジェクトでは `r.sub` に OpenGIM から得た所属・役職・原価センタ等を入れ、`r.obj` にモデル名・モデル所有部門・機密区分等を入れる。PyCasbin は「この request を許可するか」を判定し、どの BigQuery 行へ絞るかは別の filter 生成層で扱う。
+本プロジェクトでは `r.sub` に Open-GIM から得た所属・役職・原価センタ等を入れ、`r.obj` にモデル名・モデル所有部門・機密区分等を入れる。PyCasbin は「この request を許可するか」を判定し、どの BigQuery 行へ絞るかは別の filter 生成層で扱う。
 
 ---
 
@@ -316,7 +316,7 @@ implicit_permissions = e.get_implicit_permissions_for_user("alice")
 推奨する責務分担:
 
 - PyCasbin: endpoint / model 単位の allow/deny、RBAC、ABAC 条件評価。
-- OpenGIM 連携層: subject 属性の取得、短 TTL キャッシュ、属性の正規化。
+- Open-GIM 連携層: subject 属性の取得、短 TTL キャッシュ、属性の正規化。
 - `authz_core`: PyCasbin を隠蔽し、`authorize(subject, action, resource) -> Decision` を提供。
 - filter 生成層: `Decision.row_filter` を作る。BigQuery 固有ではなく条件 AST として保持する。
 - BigQuery 翻訳層: 条件 AST をパラメータ化 WHERE へ変換する。
@@ -360,7 +360,7 @@ g, bob, finance_admin
 
 PyCasbin を使う場合も、既存の認可方針は維持する。
 
-- 認可属性の正本は Entra ID ではなく OpenGIM。
+- 認可属性の正本は Entra ID ではなく Open-GIM。
 - PyCasbin は FastAPI 内の PDP 実装候補であり、APIM の代替ではない。
 - 行・列制御は PyCasbin だけで完結しない。`Decision` で filter / mask を返し、FastAPI が BigQuery とレスポンス整形に適用する。
 - policy の表現力を広げすぎない。`eval()` に複雑な式を大量に入れると、レビュー・テスト・性能の負担が増える。
@@ -371,7 +371,7 @@ PyCasbin を使う場合も、既存の認可方針は維持する。
 
 ## 14. 次に決めること
 
-1. `subject` に載せる OpenGIM 属性の最小セット。
+1. `subject` に載せる Open-GIM 属性の最小セット。
 2. `resource` の標準形。例: `model`, `path`, `owner_department`, `sensitivity`, `tenant`。
 3. action 語彙。HTTP method か、`read/create/update/delete/export` などの業務 action か。
 4. policy 保存方式。初期は Git 管理 CSV、将来は SQLAlchemy adapter へ移すか。

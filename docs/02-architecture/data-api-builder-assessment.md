@@ -34,7 +34,7 @@ FastAPI なら、JWT 検証・社内リポジトリからの属性取得・BigQu
 
 - BigQuery クライアントは `HTTPS_PROXY` を尊重するので閉域 Proxy 経由でもコード変更不要。
 - Entra ID 検証は `msal` / `PyJWT`。
-- ポリシーは OPA 等と組める。
+- ポリシーは PyCasbin（採用・埋め込み）等と組める。
 - OpenAPI 3.1 ネイティブ、AI 支援開発との相性も良好。
 
 ### 2.4 App Service か Functions か（2026 ベストプラクティス）

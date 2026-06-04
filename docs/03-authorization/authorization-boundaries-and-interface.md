@@ -2,7 +2,7 @@
 
 > ステータス: 決定ドラフト（討議用）
 > スコープ: 権限管理を独立した「権限機構（PEP/PDP）」として置く構成の責務分担とインターフェース
-> 前提: 認証=Entra ID、認可属性=OpenGIM（社内ユーザーリポジトリ）、データ=BigQuery、API=FastAPI/App Service、入口=Azure API Management（既存共有）、DAB 不採用
+> 前提: 認証=Entra ID、認可属性=Open-GIM（社内ユーザーリポジトリ）、データ=BigQuery、API=FastAPI/App Service、入口=Azure API Management（既存共有）、DAB 不採用
 > Related: `authorization-strategy.md`, `../04-research/authorization-models-and-standards-2026.md`, `row-level-filtering-layering.md`
 
 ---
@@ -56,10 +56,10 @@
 [Azure API Management]  ── 入口の粗い検証（JWT 事前検証・スロットル・サブスク）
         │
         ▼
-[権限機構（PEP / PDP）]  ── 判断：本人特定 → OpenGIM 属性取得 → ABAC 評価
+[権限機構（PEP / PDP）]  ── 判断：本人特定 → Open-GIM 属性取得 → ABAC 評価
         │                     ├ ① 粗い gate（deny なら 403）
         │                     └ ② 行フィルタ ＋ 列マスク指定を生成
-        │  ← (属性参照) ── [OpenGIM：社内ユーザーリポジトリ]
+        │  ← (属性参照) ── [Open-GIM：社内ユーザーリポジトリ]
         │ allow ＋ フィルタ・マスク
         ▼
 [FastAPI ハンドラ]      ── 執行：フィルタ→パラメータ化 WHERE 翻訳、列マスク適用、監査記録
@@ -71,7 +71,7 @@
 | 層 | 責務 | やらないこと |
 |---|---|---|
 | Azure API Management | JWT 事前検証、スロットリング、サブスクリプション、ルーティング、短期キャッシュ | 行・列の絞り込み（責務外） |
-| 権限機構（PEP/PDP） | OpenGIM 属性取得、ABAC 評価、①粗い gate、②行フィルタ・列マスク指定の生成、判定理由の提供 | SQL の組み立て・実行 |
+| 権限機構（PEP/PDP） | Open-GIM 属性取得、ABAC 評価、①粗い gate、②行フィルタ・列マスク指定の生成、判定理由の提供 | SQL の組み立て・実行 |
 | FastAPI ハンドラ | フィルタを BigQuery のパラメータ化 WHERE へ翻訳、列マスク適用、監査ログ記録 | 認可ルールそのものの保持（機構に集約） |
 | BigQuery | 押し下げ WHERE の実行、認可ビュー/認可データセットで共通モデル公開・SA 最小権限、パーティション/クラスタ、CLS（多層防御） | per-user の行判断（単一 SA では不可） |
 
@@ -96,7 +96,7 @@
 | B（将来） | 別 PDP サービス（Cerbos/OPA を別 App Service・Function でホスト、HTTP で呼ぶ） | 中央チームがポリシーを一元管理・監査、AuthZEN で差し替え可 | ホップ1回分のレイテンシ、ホスト追加 | サイドカー不可のため別ホスト＋短 TTL キャッシュ |
 | C（不採用） | FastAPI の「前」に立つプロキシで裁いてから転送 | ①粗い gate は可 | ②行・列は不可（リクエスト書き換えは脆弱）、APIM と機能重複 | APIM が既に入口を担うため重複 |
 
-**決定**：まず **A（埋め込み）** で開始。ポリシーは宣言的（CEL / Rego 等）に書き、共通リポジトリ/パッケージとして配布して分散を防ぐ。モデル API が増え中央集権ガバナンスを強める段階で **B（別 PDP）** へ移行。AuthZEN 準拠のインターフェースにしておけば、移行時に PEP 側（FastAPI）コードの変更を最小化できる。
+**決定**：まず **A（埋め込み）＝ PyCasbin で確定**。ポリシーは PyCasbin の PERM モデル（`model.conf`）＋ポリシー（CSV）で宣言的に書き、共通リポジトリ/パッケージとして配布して分散を防ぐ。モデル API が増え中央集権ガバナンスを強める段階で **B（別 PDP：Cerbos/OPA）** へ移行（将来オプション）。AuthZEN 準拠のインターフェースにしておけば、移行時に PEP 側（FastAPI）コードの変更を最小化できる。
 
 ---
 
@@ -107,7 +107,7 @@
 ```
 authorize(
   subject,    # 認証済みプリンシパル
-              #   人間: Entra ID の oid/sub ＋ OpenGIM 突合キー
+              #   人間: Entra ID の oid/sub ＋ Open-GIM 突合キー
               #   SA/エージェント: RFC 8693 の act/may_act で「実行主体」と「代理元」を区別
   action,     # "read" など（GET 系は read）
   resource    # 対象。例: { model: "部門費", kind: "record" }
@@ -122,7 +122,7 @@ Decision = {
 }
 ```
 
-属性取得（OpenGIM 参照）は **機構の内部**で行い、subject のキーで突合する。FastAPI 側は属性の存在を意識しない。
+属性取得（Open-GIM 参照）は **機構の内部**で行い、subject のキーで突合する。FastAPI 側は属性の存在を意識しない。
 
 ### FastAPI からの呼び出し例（依存性として）
 
@@ -149,7 +149,7 @@ async def get_records(model: str, principal = Depends(authenticate)):
 ## 6. APIM との境界（重複回避）
 
 - **APIM** = 入口の粗い検証（JWT 事前検証・スロットル・サブスク・ルーティング）。
-- **権限機構** = App Service 側で OpenGIM 属性取得 → ABAC → ①gate → ②フィルタ/マスク生成。
+- **権限機構** = App Service 側で Open-GIM 属性取得 → ABAC → ①gate → ②フィルタ/マスク生成。
 - C 案（前段プロキシで裁く）を自作すると APIM と機能が重複するため採らない。`../02-architecture/platform-architecture-decision.md` の「APIM で JWT 事前検証 → App Service で再検証＋属性ベース ABAC」の二段と整合。
 
 ---
@@ -157,7 +157,7 @@ async def get_records(model: str, principal = Depends(authenticate)):
 ## 7. 監査・キャッシュの注意
 
 - **監査**：機構は RLS のように「黙って絞る」挙動を担うため、`Decision.reason` と **実際に適用したフィルタ条件**（生成 WHERE）を監査ログに必ず残す。
-- **キャッシュ**：per-user のフィルタが付く結果は共有キャッシュのヒット率が低い。共通参照系（マスタ・スキーマ・公開メタ）に限定し、属性（OpenGIM）はプロセス内 LRU で短 TTL。PDP を B 化したら判定結果も短 TTL でキャッシュしてホップを緩和。
+- **キャッシュ**：per-user のフィルタが付く結果は共有キャッシュのヒット率が低い。共通参照系（マスタ・スキーマ・公開メタ）に限定し、属性（Open-GIM）はプロセス内 LRU で短 TTL。PDP を B 化したら判定結果も短 TTL でキャッシュしてホップを緩和。
 
 ---
 
@@ -165,8 +165,8 @@ async def get_records(model: str, principal = Depends(authenticate)):
 
 | # | 項目 | 内容 |
 |---|---|---|
-| 1 | ポリシー言語/エンジン | 埋め込み（PyCasbin / 自前 + CEL）か、外部 PDP（Cerbos/OPA）かの最終比較（D2 と連動） |
+| 1 | ポリシー言語/エンジン | **【決定】PyCasbin（埋め込み）を採用**（D2 クローズ。`../04-research/abac-authz-library-comparison.md`、`pycasbin/`）。外部 PDP（Cerbos/OPA）は将来オプション。残課題は `model.conf` の PERM 設計と `row_filter` 生成方式 |
 | 2 | 条件 AST → BigQuery 翻訳層 | PlanResources/Compile 出力 → BigQuery パラメータ化 SQL のマッピング設計 |
 | 3 | SA/エージェントの token | RFC 8693 delegation（OBO）/ impersonation の使い分けと Entra ID 実装（OBO フロー）確認 |
-| 4 | OpenGIM 参照仕様 | 突合キー・属性項目・到達経路（論点② と連動） |
+| 4 | Open-GIM 参照仕様 | 突合キー・属性項目・到達経路（論点② と連動） |
 | 5 | PoC | 「部門費モデル」で subject→属性→Decision→生成 WHERE→BigQuery 実行→列マスク の一連を最小実装 |

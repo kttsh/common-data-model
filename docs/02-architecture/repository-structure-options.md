@@ -2,7 +2,8 @@
 
 > Source: split from previous combined API technology research memo.
 > Status: Design input.
-> **決定（2026-06）**: 言語・FW は **Python / FastAPI を採用**（`runtime-framework-decision.md`）。下記 3 案のうち **#2 Python が採用案**。#1 .NET / #3 Go は比較用に保持。実際のリポジトリ構成は `../06-data-platform/repository-strategy.md` の `api` リポジトリ（FastAPI、ドメイン単位構成）を正とする。
+> **決定（2026-06）**: 言語・FW は **Python / FastAPI を採用**（`runtime-framework-decision.md`）。下記 3 案のうち **#2 Python が採用案**。#1 .NET / #3 Go は比較用に保持。実際のリポジトリ構成は `repository-strategy.md` の `api` リポジトリ（FastAPI、ドメイン単位構成）を正とする。
+> **注（整合）**: 下記サンプルは選定前の比較用イメージのため、確定方針と一部食い違う。正は次のとおり——CI/CD は **GitHub Actions**（`.harness/pipelines/` は不採用。`../04-research/ci-cd-delivery-research-2026.md` 参照）、認可は **PyCasbin 埋め込み**（サンプルの `abac.py # OPA HTTP クライアント` ではない。`../03-authorization/pycasbin/` 参照）、#2 の `main.py` 例は Litestar 表記だが採用は FastAPI。
 
 # Part 3: ソースコード構造のイメージ
 

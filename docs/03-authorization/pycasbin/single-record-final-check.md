@@ -156,4 +156,3 @@ p, purchase_order.approval_amount, read_column, r.sub.employee_type == 4, deny
 - [`basic-specification.md`](basic-specification.md): PyCasbin の基本仕様と PERM 構文（ABAC・`eval()`・deny-override は §4・§7）。
 - [`../row-level-filtering-layering.md`](../row-level-filtering-layering.md): 行レベル絞り込みの層分担。
 - [`../authorization-boundaries-and-interface.md`](../authorization-boundaries-and-interface.md): `authorize()` と `Decision` のインターフェース、2 段の裁き。
-</content>
