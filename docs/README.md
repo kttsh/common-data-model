@@ -17,6 +17,10 @@
 
 - `03-authorization/authorization-strategy.md`: 権限制御の論点整理と技術方針。
 - `03-authorization/authorization-boundaries-and-interface.md`: PEP/PDP 責務分担と `authorize()` インターフェースの決定メモ。
+- `03-authorization/pycasbin/basic-specification.md`: PyCasbin の基本仕様、対応モデル、FastAPI/PDP 内で担う範囲の調査メモ。
+- `03-authorization/pycasbin/policy-examples-purchase-order.md`: 注文伝票を題材にした PyCasbin ポリシー定義例（居住国・部門・役職・列マスクなど）。「基本的な仕組み → 実例 → 補足 → BQ 展開イメージ」の順で、特性のあるコードの捌き方とルール定義方法に集中。
+- `03-authorization/pycasbin/row-scope-to-bigquery-implementation.md`: 上記の別紙。`row_scope` を BigQuery の WHERE に展開する Python 実装（前方一致の範囲展開・パラメータ集約・fail-safe）。
+- `03-authorization/pycasbin/single-record-final-check.md`: 上記の別紙。詳細画面で 1 件開いたときの最終チェック（1 件単位の `enforce()`、time-of-check / time-of-use のずれ対策）。
 - `03-authorization/row-level-filtering-layering.md`: 行レベル絞り込みをどの層で担うかの整理。
 - `03-authorization/shared-pdp-across-api-and-bigquery.md`: PDP を FastAPI 経路と BigQuery を叩く処理で共用（統一）するための検討メモ。
 
