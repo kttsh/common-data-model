@@ -1,10 +1,5 @@
 # Authorization Boundaries and Interface Decision
 
-> ステータス: 決定ドラフト（討議用）
-> スコープ: 権限管理を独立した「権限機構（PEP/PDP）」として置く構成の責務分担とインターフェース
-> 前提: 認証=Entra ID、認可属性=Open-GIM（社内ユーザーリポジトリ）、データ=BigQuery、API=FastAPI/App Service、入口=Azure API Management（既存共有）、DAB 不採用
-> Related: `authorization-strategy.md`, `../04-research/authorization-models-and-standards-2026.md`, `row-level-filtering-layering.md`
-
 ---
 
 ## 略語・用語

@@ -1,12 +1,5 @@
 # Authorization Strategy
 
-> ステータス: 討議用ドラフト（論点出し＋技術方針）
-> Sources: role memo, `../01-requirements/product-requirements.md`, `../02-architecture/platform-architecture-decision.md`
-> 用途: チーム内ディスカッション（API・データモデルの権限管理）
-> 前提: データソースは BigQuery、実行基盤は FastAPI + App Service / Functions、DAB は不採用方針
-> Note: **FastAPI は採用決定済み（2026-06）**。選定理由は `../02-architecture/runtime-framework-decision.md` を参照。
-> 用語: **Open-GIM = 社内ユーザーリポジトリ**（役職・所属など認可属性の正本。Entra ID には当該属性が無いため別途参照する）
-
 ---
 
 ## 略語・用語

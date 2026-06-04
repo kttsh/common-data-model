@@ -1,11 +1,5 @@
 # 別紙: 詳細画面の 1 件チェック（1 件単位の最終確認）
 
-> ステータス: 調査メモ（補助経路・1 件単位判定の別紙）
-> 情報時点: 2026年6月
-> スコープ: [`policy-examples-purchase-order.md`](policy-examples-purchase-order.md) の主経路（一覧フィルタ）で絞り込んだ後、詳細画面で 1 件開いたときの最終確認。参照系（read）に限る。
-> Sources（MCP 経由で確認）: PyCasbin README, `examples/abac_rule_model.conf`, `examples/rbac_with_deny_model.conf`, `tests/benchmarks/benchmark_model.py`
-> Related: `policy-examples-purchase-order.md`（親）, `row-scope-to-bigquery-implementation.md`, `basic-specification.md`, `../authorization-boundaries-and-interface.md`, `../row-level-filtering-layering.md`
-
 ---
 
 ## 1. この別紙の位置づけ

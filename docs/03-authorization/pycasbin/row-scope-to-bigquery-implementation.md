@@ -1,10 +1,5 @@
 # 別紙: row_scope を BigQuery の WHERE に展開する実装
 
-> ステータス: 調査メモ（実装担当者向けの詳細別紙）
-> 情報時点: 2026年6月
-> スコープ: [`policy-examples-purchase-order.md`](policy-examples-purchase-order.md) で示した `row_scope` / `mask_profile` を、実際に BigQuery のパラメータ化クエリへ落とす Python 実装。
-> Related: `policy-examples-purchase-order.md`（親）, `single-record-final-check.md`（詳細画面の1件チェック・別紙）, `basic-specification.md`, `../row-level-filtering-layering.md`, `../authorization-boundaries-and-interface.md`
-
 ---
 
 ## 1. この別紙の位置づけ

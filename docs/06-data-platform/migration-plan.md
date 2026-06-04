@@ -4,10 +4,6 @@
 
 - 作成日: 2026-06-03
 - 改訂日: 2026-06-04（`../02-architecture/repository-strategy.md` 準拠へ全面改稿。ネイティブ前提を CLI 路線へ変更）
-- ステータス: ドラフト（実行手順）
-- 関連: `../02-architecture/repository-strategy.md`（上位設計：リポジトリ戦略・3 ランドスケープ昇格・運用・ブランチ戦略）、`dataform-naming-convention.md`（命名・層）
-- 前提: **CLI 路線**（ローカル CLI 手打ち → Step 2 で GitHub Actions の CLI 実行）。GCP 側 Dataform リポジトリは作らず BigQuery 直叩き。環境差はデプロイ時の **CLI コンパイラオプション**（`--default-database` 等）で注入。認証は**鍵レス**（WIF＋ADC）。
-- 旧前提からの変更: かつての「GCP ネイティブ（release configuration のプロジェクトオーバーライド＋strict act-as カスタム SA）」は採用しない。`../02-architecture/repository-strategy.md`（運用の初期メモ＝Dataform は CLI 方式）が CLI 路線を採ったため、release/workflow configuration と strict act-as カスタム SA は本プランから撤去した。GCP ネイティブ案の記録は `dataform-operating-model.md`（不採用）に残す。
 
 ---
 

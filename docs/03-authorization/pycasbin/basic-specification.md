@@ -1,10 +1,5 @@
 # PyCasbin Basic Specification
 
-> ステータス: 調査メモ（PyCasbin 採用後の基本仕様整理）
-> 情報時点: 2026年6月
-> Sources: PyCasbin README, Casbin official docs `overview`, `syntax-for-models`, `supported-models`, `abac`, `rbac-with-domains`, `function`, `adapters`, `data-permissions`, `rbac-api`, PyCasbin `examples/rbac_with_deny_model.conf`, `examples/abac_rule_model.conf`
-> Related: `policy-examples-purchase-order.md`, `row-scope-to-bigquery-implementation.md`, `single-record-final-check.md`, `../authorization-strategy.md`, `../authorization-boundaries-and-interface.md`, `../row-level-filtering-layering.md`, `../shared-pdp-across-api-and-bigquery.md`, `../../04-research/abac-authz-library-comparison.md`
-
 ---
 
 ## 1. 要約
