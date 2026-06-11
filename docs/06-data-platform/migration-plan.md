@@ -4,6 +4,9 @@
 
 - 作成日: 2026-06-03
 - 改訂日: 2026-06-04（`../02-architecture/repository-strategy.md` 準拠へ全面改稿。ネイティブ前提を CLI 路線へ変更）
+- 改訂日: 2026-06-11（暫定〔CLI〕路線の移行手順として位置づけを明確化。命名を Silver=`dim_`/`fct_`・Gold=業務名へ追従、outputs はフラット構成、リポジトリ名を `common-data-model` に統一）
+
+本プランがカバーするのは**暫定（CLI）路線の Step 1**（構造集約）まで。本筋（GCP ネイティブ＝Terraform 管理の release / workflow config）への移行は `../02-architecture/bigquery-dataform-design-rules.md` を正本とする。
 
 ---
 
@@ -27,33 +30,35 @@ ai-driven-comod-cdem/
 | as-is の状態 | 抵触している原則 | 出典 |
 |---|---|---|
 | 大文字 `Dim_COST_MASTER` / `V_COEP` | 小文字 snake_case | 命名 |
-| `Dim_` / `Fact_` / `V_` プレフィックス | dim/fct プレフィックス不採用、`outputs` は簡潔名 | 命名 |
+| 大文字 `Dim_` / `Fact_` / `V_` 表記 | Silver は小文字の `dim_`/`fct_`、Gold（`outputs`）は業務名のみ | 命名 |
 | `-stg` / `-prd` を物理コピーで分離 | 環境差はフォルダ/ブランチで分けず、デプロイ時の CLI オプションで注入 | 戦略 |
-| 各テーブルが個別 `workflow_settings.yaml`＝実質別 repo | 1 Git = 1 Dataform repo、`outputs/<entity>/` で増やす | 戦略 |
+| 各テーブルが個別 `workflow_settings.yaml`＝実質別 repo | 1 Git = 1 Dataform repo、`outputs/<entity>.sqlx` で増やす | 戦略 |
 | `outputs` しか無い（`sources`/`intermediate` 無し） | `definitions/` を 3 層に分割 | 戦略・命名 |
 | `dataform-rewrite.sh`（`sed` 置換）＋ REST `writeFile` | `workflow_settings.yaml` は環境非依存、環境差は CLI コンパイラオプションで注入 | 戦略 |
 | SA JSON キー＋既定サービスエージェント | 鍵レス：WIF(OIDC)＋ADC。`.df-credentials.json` は非コミット | 戦略 |
-| `empty/`・`github-actions/`・`develop/`・`staging/` | 雛形・残骸。`outputs/<entity>/` を1ファイル足す運用 | 戦略 |
+| `empty/`・`github-actions/`・`develop/`・`staging/` | 雛形・残骸。`outputs/<entity>.sqlx` を 1 ファイル足す運用 | 戦略 |
 
-> 注: かつて as-is ギャップに挙げていた「ネイティブ repo＋strict act-as カスタム SA」関連は、CLI 路線では GCP 側 Dataform リポジトリを作らないため**論点ごと消滅**する。組織ポリシー `dataform.restrictGitRemotes`（ネイティブ repo の Git リモート制限）も CLI 路線では無関係。
+> 注: かつて as-is ギャップに挙げていた「ネイティブ repo＋strict act-as カスタム SA」関連は、CLI 路線では GCP 側 Dataform リポジトリを作らないため**論点ごと消滅**する。組織ポリシー `dataform.restrictGitRemotes`（ネイティブ repo の Git リモート制限）も CLI 路線では無関係。いずれも本筋（GCP ネイティブ）へ移行する段階で再び論点になる（正本: `../02-architecture/bigquery-dataform-design-rules.md`）。
 
 ---
 
 ## 2. あるべき姿（to-be）— 要約
 
-単一リポジトリ・3 層構造・小文字 snake_case・環境差は CLI コンパイラオプション・鍵レス（WIF＋ADC）。リポジトリ完成形は `../02-architecture/repository-strategy.md` の `dataform` リポジトリ構成を参照。
+単一リポジトリ・3 層構造・小文字 snake_case（Silver=`dim_`/`fct_`、Gold=業務名）・環境差は CLI コンパイラオプション（暫定）・鍵レス（WIF＋ADC）。リポジトリ完成形は `../02-architecture/repository-strategy.md` の `common-data-model` リポジトリ構成と `../02-architecture/bigquery-dataform-design-rules.md` を参照。
 
-本プランは**プラットフォーム別分割（`dataform` / `api` / `data-contracts`）のうち `dataform` リポジトリ単体**の移行を対象とする（戦略）。下流（API `repository.py` / BI）との契約突き合わせは、採用するなら `data-contracts` 経由で行う（戦略）。
+本プランは**プラットフォーム別分割（`common-data-model` / `api` / `infra-gcp` / `data-contracts`）のうち `common-data-model`（Dataform）リポジトリ単体**の移行を対象とする（戦略）。下流（API `repository.py` / BI）との契約突き合わせは、採用するなら `data-contracts` 経由で行う（戦略）。
 
 ### 名称マッピング
 
 | as-is | 種別 | to-be | 配置 |
 |---|---|---|---|
-| `Dim_COST_MASTER` | master | `cost_master` | `outputs/cost/cost_master.sqlx` |
-| `Fact_COST_DETAIL` | detail | `cost_detail` | `outputs/cost/cost_detail.sqlx` |
-| `Dim_ORDER_MASTER` | master | `order_master` | `outputs/order/order_master.sqlx` |
-| `Fact_ORDER_DETAIL` | detail | `order_detail` | `outputs/order/order_detail.sqlx` |
+| `Dim_COST_MASTER` | master | `dim_cost_master` | `intermediate/dim_cost_master.sqlx` |
+| `Fact_COST_DETAIL` | detail | `fct_cost_detail` | `intermediate/fct_cost_detail.sqlx` |
+| `Dim_ORDER_MASTER` | master | `dim_order_master` | `intermediate/dim_order_master.sqlx` |
+| `Fact_ORDER_DETAIL` | detail | `fct_order_detail` | `intermediate/fct_order_detail.sqlx` |
 | `V_COEP` | SAP CO ビュー | `coep`（＋必要なら `stg_coep`） | `sources/sap/coep.sqlx`（層は要確認） |
+
+> 注: 既存の master/detail は Silver（`intermediate`）の `dim_`/`fct_` として位置づけ直す。Gold（`outputs`）には業務名のフラットテーブル（例: `cost_management`）を Silver の結合で別途定義し、API・下流の参照は Gold 整備後にそちらへ切り替える。
 
 ---
 
@@ -68,7 +73,7 @@ ai-driven-comod-cdem/
 
 ## 4. フェーズ（順番）と Step マッピング
 
-`../02-architecture/repository-strategy.md` のロードマップ（Step 1 手動 → Step 2 CLI/Actions → Step 3 Terraform）に従い、本プランの Phase 0〜5 は **Step 1（手動・ローカル CLI 手打ち）で構造集約を完結**させる。CI 自動デプロイ・stg/prod 昇格・WIF・Terraform は Step 2／Step 3 に分離する。
+`../02-architecture/repository-strategy.md` のロードマップ（Step 1 手動 → Step 2 CLI/Actions → Step 3 Terraform → Step 4 GCP ネイティブ=本筋）に従い、本プランの Phase 0〜5 は **Step 1（手動・ローカル CLI 手打ち）で構造集約を完結**させる。CI 自動デプロイ・stg/prod 昇格・WIF・Terraform は Step 2／Step 3 に分離する。
 
 ### Phase 0 — 確認・準備（破壊なし）【Step 1】
 - 目的: 事故要因の洗い出し。
@@ -89,7 +94,7 @@ ai-driven-comod-cdem/
 
 ### Phase 3 — 3 層構造へ再配置（名前は維持）【Step 1】
 - 目的: `definitions/` の標準化。
-- 作業: `V_COEP` を `sources/sap/`（または `intermediate/stg_coep`）へ。master/detail を `outputs/<domain>/`（`cost/`・`order/`）へ移動。**まだリネームしない**。
+- 作業: `V_COEP` を `sources/sap/`（または `intermediate/stg_coep`）へ。master/detail を `intermediate/` へ移動。**まだリネームしない**。
 - 検証: 各移動をローカル CLI で dev に run → 検証。
 - 備考: Phase 2 と 3 はエンティティ単位で 1 ブランチにまとめると効率的。
 
@@ -109,6 +114,9 @@ ai-driven-comod-cdem/
 ### （以降）Step 3 — Terraform 化【本プランの範囲外・参照のみ】
 - デプロイ機構は CLI のまま。dataset・SA・WIF・IAM を `import` でコード化（リスクの高い WIF＋IAM スライスから先行、GCS backend、オンプレ実行）（戦略）。
 
+### （以降）Step 4 — GCP ネイティブ移行（本筋）【本プランの範囲外・参照のみ】
+- デプロイ機構を Terraform 管理の release / workflow config へ移行（環境差は `code_compilation_config`、`git_commitish` は昇格時にタグ/SHA で固定）。正本: `../02-architecture/bigquery-dataform-design-rules.md`。
+
 ---
 
 ## 5. ブランチステップ（トランクベース）
@@ -126,12 +134,12 @@ ai-driven-comod-cdem/
 |---|---|---|---|
 | 1 | `chore/repo-skeleton` | 1 | 環境非依存の単一 `workflow_settings.yaml`・`definitions/{sources,intermediate,outputs}`・`includes/`・`ci.yml` を新設（既存 dir と共存）。ローカル CLI で dev 空 run を確認 |
 | 2 | `feature/sap-coep-source` | 3 | `V_COEP` を `sources/sap/coep.sqlx`（または `intermediate/stg_coep`）へ。生 SAP は declaration |
-| 3 | `feature/cost-outputs` | 2＋3 | `Dim_COST_MASTER{,-stg,-prd}`＋`Fact_COST_DETAIL{,-stg,-prd}` を `outputs/cost/{cost_master,cost_detail}.sqlx` に集約。名前維持（消費者なしならここでリネーム） |
-| 4 | `feature/order-outputs` | 2＋3 | order ドメインで同様 |
+| 3 | `feature/cost-intermediate` | 2＋3 | `Dim_COST_MASTER{,-stg,-prd}`＋`Fact_COST_DETAIL{,-stg,-prd}` を `intermediate/{dim_cost_master,fct_cost_detail}.sqlx` に集約。テーブル名は維持（消費者なしならここでリネーム） |
+| 4 | `feature/order-intermediate` | 2＋3 | order ドメインで同様 |
 | 5 | `refactor/cost-rename` / `refactor/order-rename` | 4 | **消費者がいる場合のみ**。後方互換ビューを置き、API 契約と突き合わせてエンティティ単位でリネーム → 旧名撤去 |
 | 6 | `chore/cleanup-legacy` | 5 | 雛形・残骸 dir・rewrite スクリプト・旧 workflow を削除、`STRUCTURE.md`/`README.md` 更新 |
 
-> 流れの要約: 「足すブランチ（骨格）→ エンティティ単位で畳む＋3 層化するブランチ → （必要なら）リネームブランチ → 掃除ブランチ」。旧プランの `chore/native-deploy-setup`（ネイティブ基盤・カスタム SA・release config）は CLI 路線では不要のため削除した。自動デプロイ（`deploy-dev.yml` / `promote.yml`）と WIF は Step 2 で別途追加する。将来のエンティティ追加（invoice 等）は `feature/<entity>-outputs` 1 ブランチで完結し、`outputs/<entity>/` を足すだけになる。
+> 流れの要約: 「足すブランチ（骨格）→ エンティティ単位で畳む＋3 層化するブランチ → （必要なら）リネームブランチ → 掃除ブランチ」。旧プランの `chore/native-deploy-setup`（ネイティブ基盤・カスタム SA・release config）は CLI 路線では不要のため削除した。自動デプロイ（`deploy-dev.yml` / `promote.yml`）と WIF は Step 2 で別途追加する。将来のエンティティ追加（invoice 等）は `feature/<entity>-outputs` 1 ブランチで完結し、`outputs/<entity>.sqlx`（＋必要な `dim_*`/`fct_*`）を足すだけになる。
 
 ---
 
@@ -139,7 +147,7 @@ ai-driven-comod-cdem/
 
 - **消費者なし**（ドラフト段階で未公開）: Phase 3 の移動と**同時にリネーム**してよい（#3 / #4 に統合）。最も簡素。
 - **消費者あり**（API `repository.py` / BI が現テーブルを参照）: 破壊的なので段階適用。
-  - 新名（例 `cost_master`）を作成しつつ、旧名のビュー（`config { name: "Dim_COST_MASTER" }` で旧名 view を別途定義し新名を指す）を一時的に残す。
+  - 新名（例 `dim_cost_master`）を作成しつつ、旧名のビュー（`config { name: "Dim_COST_MASTER" }` で旧名 view を別途定義し新名を指す）を一時的に残す。
   - 下流を新名へ移行 → 旧名ビュー撤去。これを **1 エンティティずつ**。
   - 破壊的変更は契約変更として扱い、`data-contracts`（採用時）の契約・API 側スキーマと突き合わせてから適用する（命名・戦略）。
 
@@ -171,7 +179,7 @@ ai-driven-comod-cdem/
 **完了基準【Step 1 構造集約】**
 - [ ] 単一 Dataform リポジトリ＝単一 Git リポジトリ
 - [ ] `definitions/` が sources/intermediate/outputs の 3 層
-- [ ] 命名規約（小文字 snake_case・`dim_/fct_` なし）
+- [ ] 命名規約（小文字 snake_case。Silver=`dim_`/`fct_`、Gold=業務名のみ）
 - [ ] `workflow_settings.yaml` は環境非依存。環境差は CLI の `--default-database`（必要に応じ `--schema-suffix`/`--vars`）で注入。`environments/*.json` は非コミット
 - [ ] 同一 commit から dev/stg/prod を再生成できる（build-once の素振りを確認）
 - [ ] `empty/`・`github-actions/`・`develop/`・`staging/`・`dataform-rewrite.sh`・個別 workflow を削除

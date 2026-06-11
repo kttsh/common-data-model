@@ -69,6 +69,7 @@ FastAPI 0.136 系は OpenAPI 3.1 をデフォルト出力する。以前は 3.1 
 - **.NET 9 / Minimal API** — Azure・Entra ID・Managed Identity とのネイティブ統合が最も強い C# スタック。
 - **Go / Huma** — OpenAPI 3.1 ファースト設計＋シングルバイナリの軽量デプロイ。
 - **TypeScript / NestJS・Hono** — フロントと言語を揃えやすく、Hono はエッジ最適化に強い。
+- **Azure Data API Builder（DAB）** — 設定駆動で REST/GraphQL を自動生成する Azure 系サービス。データソースが BigQuery のため対象外（DAB の対応ソースは Azure SQL / Cosmos DB / PostgreSQL / MySQL 等）として不採用。
 
 ---
 
@@ -96,3 +97,4 @@ FastAPI 0.136 系は OpenAPI 3.1 をデフォルト出力する。以前は 3.1 
 | 2026-06-04 | 0.1 | 案A 等の前提記述を整理し決定事項を直接記載。却下候補表を「参考: モダンな代替スタック」へ再構成 |
 | 2026-06-04 | 0.2 | 他ドキュメントへのクロス参照（`*.md` §N 形式）を本文から除去 |
 | 2026-06-04 | 0.3 | 節番号と本文中の自己参照を削除。重複・冗長表現を整理し、リンク集を「参考リンク」として分離 |
+| 2026-06-11 | 0.4 | 代替スタックに Azure Data API Builder（不採用）を追記（旧 `data-api-builder-assessment.md` の決定を集約） |

@@ -1,8 +1,6 @@
 # Platform Architecture Decision
 
 > 作成日: 2026-05-26
-> ステータス: **案A 採用決定**
-> Related: `../01-requirements/product-requirements.md`
 
 ---
 
@@ -272,7 +270,7 @@
 | D3 | API 設計規約（L5） | JSON:API / OData / 独自 のページング・フィルタ表現比較 |
 | D4 | OpenAPI 連携方式（L6） | スキーマファースト vs コードファースト |
 | D5 | バージョニング戦略 | URI path（/v1/...）vs Header（Accept-Version） |
-| D6 | プロセス内キャッシュライブラリ | 言語依存（.NET: IMemoryCache / Python: cachetools / Node: lru-cache） |
+| D6 | プロセス内キャッシュライブラリ | Python 前提（D1 確定済み）。cachetools / aiocache 等を比較 |
 | D7 | 監視・トレーシング | Application Insights / Log Analytics / Datadog の役割分担 |
 | D8 | デプロイ戦略 | デプロイスロット運用、Blue/Green、カナリア |
 
@@ -295,3 +293,4 @@
 | 2026-05-26 | 1.0 | 案A 採用決定、案B/案C を将来比較用に保持 |
 | 2026-06-03 | 1.1 | 言語・FW を Python / FastAPI に確定（D1 クローズ、`runtime-framework-decision.md` 参照） |
 | 2026-06-04 | 1.2 | L3/D2 の認可エンジンを **PyCasbin（埋め込み）に確定**（外部 PDP は将来オプション）。認可属性ストアの正本呼称を **Open-GIM** に統一 |
+| 2026-06-11 | 1.3 | フロントマター（ステータス/Related）を除去、D6 を Python 前提に更新 |

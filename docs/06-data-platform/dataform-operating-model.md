@@ -1,12 +1,12 @@
-# Dataform リポジトリ運用設計（GCP ネイティブ案・不採用）
+# Dataform リポジトリ運用設計（GCP ネイティブ案・検討記録）
 
-> ⚠️ **不採用（記録として保持）**: 本書が示す **GCP ネイティブ方式**（release / workflow configuration＋strict act-as カスタム SA＋Terraform）は、その後の検討で **CLI 路線へ変更されたため採用しない**。Dataform のデプロイ運用の正は **`../02-architecture/repository-strategy.md`（CLI 方式）と `migration-plan.md`（CLI 路線の移行手順）** を参照すること。本書は、GCP ネイティブ案を検討した記録として残す（将来 Container/native 運用を再評価する際の比較材料）。
+> **位置づけ（2026-06-11 改定）**: 本書が示す **GCP ネイティブ方式**（release / workflow configuration＋strict act-as カスタム SA＋Terraform）は、2026-06-04 に一度 CLI 路線へ反転したのち、**本筋（目標状態）として再採用**された（暫定運用は CLI）。最新の決定は **`../02-architecture/bigquery-dataform-design-rules.md`（本筋の正本）と `../02-architecture/repository-strategy.md`（暫定/本筋の使い分け・昇格フロー）** を参照すること。本書は基礎検討の記録として保持する。
 
-`../02-architecture/repository-strategy.md` の Dataform 部分を、2026 年の GCP ネイティブ標準（BigQuery 統合・release / workflow 構成・strict act-as）に合わせて検討したもの。**当初は本方式を確定としたが、後に CLI 路線へ反転した**（経緯は `migration-plan.md` 冒頭の「旧前提からの変更」を参照）。
+`../02-architecture/repository-strategy.md` の Dataform 部分を、2026 年の GCP ネイティブ標準（BigQuery 統合・release / workflow 構成・strict act-as）に合わせて検討したもの。**当初は本方式を確定とし、いったん CLI 路線へ反転したのち、2026-06-11 に本筋（目標状態）として位置づけ直した**（経緯は `migration-plan.md` 冒頭の「旧前提からの変更」と本書冒頭の位置づけを参照）。
 
 - 作成日: 2026-06-03
-- ステータス: **不採用（GCP ネイティブ案）**。デプロイは CLI 路線に変更（最新は `../02-architecture/repository-strategy.md`・`migration-plan.md`）
-- 関連: `../02-architecture/repository-strategy.md`（案 B・全体方針）、`dataform-naming-convention.md`（命名・層構造）、`migration-plan.md`（移行ステップ＝CLI 路線）
+- ステータス: **検討記録（本筋路線の基礎検討）**。最新の決定は `../02-architecture/bigquery-dataform-design-rules.md`・`../02-architecture/repository-strategy.md`
+- 関連: `../02-architecture/repository-strategy.md`（案 B・全体方針）、`../02-architecture/bigquery-dataform-design-rules.md`（層構造・命名）、`migration-plan.md`（移行ステップ＝暫定 CLI 路線）
 - 旧設計からの前提変更（※本書が検討した GCP ネイティブ案の内部での差分。CLI 路線への反転は上記バナー参照）:
   - 旧 `environments/*.json`（コード同梱の環境定義）方式は **廃止** → **release configuration**（Terraform 管理推奨）へ移譲。
   - CLI / Docker デプロイ案・REST `writeFile` 方式は **不採用** → **GCP ネイティブ（release / workflow 構成）** に統一。
@@ -16,7 +16,7 @@
 
 ## 1. 位置づけと決定事項
 
-> 本節は **GCP ネイティブ案の検討時点の決定**を記録したもの。最終的にはこの方式は採らず CLI 路線に反転している（冒頭バナー／`migration-plan.md` 参照）。
+> 本節は **GCP ネイティブ案の検討時点の決定**を記録したもの。その後 2026-06-04 に CLI 路線へ反転し、2026-06-11 に暫定=CLI／本筋=GCP ネイティブの二段構えへ改定された（冒頭の位置づけ参照）。
 
 `../02-architecture/repository-strategy.md` の案 B（プラットフォーム別分割、Dataform は専用 Git リポジトリを持つ）を踏襲し、その Dataform の **デプロイ／環境／昇格の具体方式を GCP ネイティブで検討**した（当時の暫定決定）。検討時点の決定は次のとおり。
 

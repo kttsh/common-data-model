@@ -17,7 +17,7 @@
 | 3 | **shift-left ＋ 本番監視の二段構え** | CI で「契約破壊・退行」を出荷前に止める。本番では「データ drift・SLO 逸脱」を継続監視で捕捉する。役割が違うので両方やる。 |
 | 4 | **実データに依存しないテストを土台にする** | stg に本番相当データが少なくても、正しさは「固定入力のユニットテスト＋合成データ」で担保できる。データ量に左右される検証は最小限に寄せる。 |
 | 5 | **fail securely と negative testing を最優先（特に認可）** | 「拒否すべきが拒否されるか」「黙って広く見せていないか／列が漏れていないか」が最も危険な退行。allow より deny を厚くテストする。 |
-| 6 | **1 エンティティ = テストも 1:1 対応** | `outputs/<entity>` ↔ `src/<entity>/` ↔ `policies/<entity>.csv` の同名対応にテストも紐づけ、**新規追加時に必須テストが揃わなければマージ不可**にする（CI ゲート）。 |
+| 6 | **1 エンティティ = テストも 1:1 対応** | `outputs/<entity>.sqlx` ↔ `src/<entity>/` ↔ `policies/<entity>.csv` の同名対応にテストも紐づけ、**新規追加時に必須テストが揃わなければマージ不可**にする（CI ゲート）。 |
 | 7 | **fix-forward。テストで環境を直さない** | stg で露出した不備は環境を手で直さず、dev で再現するテストを足してコードを直す。退行を二度と素通りさせない。 |
 
 ---
@@ -75,7 +75,7 @@ Dataform は 4 つの手段を段階的に使う。
 
 ### 実例
 
-- `outputs/<entity>/` の公開ビューには `uniqueKey`／`nonNull`／`rowConditions` を最低限付与し、API 公開面の前提をデータ側で守る。エンティティ間の参照整合性（FK 相当）は「0 行クエリ」の手書き assertion で。
+- `outputs/<entity>.sqlx`（公開テーブル）には `uniqueKey`／`nonNull`／`rowConditions` を最低限付与し、API 公開面の前提をデータ側で守る。エンティティ間の参照整合性（FK 相当）は「0 行クエリ」の手書き assertion で。
 - `intermediate/` の集計・分岐・日付演算など込み入った変換は `dataform test` でロジック検証を優先する。
 - assertion ファイル名は `assert_<table>_<rule>.sqlx`。命名・層構造（sources/intermediate/outputs）の正本は [`../06-data-platform/dataform-naming-convention.md`](../06-data-platform/dataform-naming-convention.md)。
 
@@ -263,7 +263,7 @@ flowchart LR
 
 | 変更の種類 | 必須化（揃わなければマージ不可） |
 |---|---|
-| **新規エンティティ追加** | Dataform: `outputs/<entity>` に assertions ＋ 変換の `type:"test"`／API: `src/<entity>/` の単体＋統合／認可: `<entity>.csv` の行カバレッジ＋Decision golden＋list/detail の BOLA テスト／契約: 新エンティティの contract と両側突合 |
+| **新規エンティティ追加** | Dataform: `outputs/<entity>.sqlx` に assertions ＋ 変換の `type:"test"`／API: `src/<entity>/` の単体＋統合／認可: `<entity>.csv` の行カバレッジ＋Decision golden＋list/detail の BOLA テスト／契約: 新エンティティの contract と両側突合 |
 | **ポリシー（認可）変更** | golden 差分の自動生成 → CODEOWNERS（セキュリティ）レビュー ＋ 変更行の新テスト ＋ カバレッジ非低下 ＋ 本番前 shadow/dry-run |
 | **スキーマ（契約）変更** | producer/consumer 両側の契約突合。破壊的変更ならメジャー版 bump ＋ 旧版併存で段階適用 |
 | **変換ロジック変更** | 該当 `type:"test"` の更新／追加 ＋ 関連 assertions |

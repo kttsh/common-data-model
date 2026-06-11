@@ -1,10 +1,9 @@
-# Dataform リポジトリ構成・命名規約
+# Dataform 詳細命名リファレンス
 
-`dataform` リポジトリ（→ BigQuery）のフォルダ体系とファイル/テーブル命名規約をまとめたリファレンス。Dataform 公式の推奨に素直に従う方針で確定。
+`common-data-model` リポジトリ（Dataform → BigQuery）のファイル・テーブル・カラム等の詳細命名規約。**層構造・テーブル接頭辞（`dim_`/`fct_`・業務名）・環境分離の決定は [`../02-architecture/bigquery-dataform-design-rules.md`](../02-architecture/bigquery-dataform-design-rules.md) が正本**で、本書はその下位の詳細リファレンス。
 
 - 作成日: 2026-05-31
-- ステータス: 確定（公式標準 `sources / intermediate / outputs` 準拠）
-- 関連: `repository-strategy.md`（リポジトリ分割・昇格フロー）
+- 更新日: 2026-06-11（決定の正本を `bigquery-dataform-design-rules.md` へ移管。Silver=`dim_`/`fct_` 採用・outputs フラット化・リポジトリ名 `common-data-model` に追従）
 
 ---
 
@@ -13,105 +12,74 @@
 | 原則 | 内容 |
 |---|---|
 | **小文字 snake_case** | テーブル名・カラム名・ファイル名すべて。大文字は使わない（`ORDER_DETAIL` ✕ → `order_detail` ○） |
-| **ファイル名 = テーブル名** | `definitions/.../order_detail.sqlx` → BigQuery テーブル `order_detail`。一致させる |
-| **ファイル名はサブディレクトリ構造を反映** | Dataform 公式の明示要件。フォルダで役割が分かるようにする |
+| **ファイル名 = テーブル名** | `definitions/.../cost_management.sqlx` → BigQuery テーブル `cost_management`。一致させる |
+| **フォルダ名 = データセット名 = `config.schema`** | 「ファイルパス＝テーブルの居場所」を成立させる。源泉宣言のみ `sources/<source_system>/` のサブフォルダで源泉軸を表す |
 | **BigQuery 命名規則に準拠** | 全ファイル名が BigQuery のテーブル命名規則に従う必要がある（Dataform の制約） |
-| **フォルダ = ドメイン分け、環境分けには使わない** | 環境差（dev/stg/prod）はデプロイ時に注入し、フォルダやブランチで環境を分けない（注入方式＝CLI コンパイラオプションは `repository-strategy.md`・`migration-plan.md` が正） |
-
-> 注: `fct_` / `dim_` プレフィックス（dbt 流のディメンショナルモデリング）は **採用しない**。Dataform 公式は `outputs` のファイル名を「簡潔に」とのみ規定しており、層プレフィックスを付けるのは中間層（`stg_`）のみとする。
+| **フォルダ・ブランチで環境を分けない** | 環境差（dev/stg/prod）はデプロイ時に注入する。暫定は CLI コンパイラオプション、本筋は Terraform 管理のリリース構成（正は `../02-architecture/bigquery-dataform-design-rules.md`・`../02-architecture/repository-strategy.md`） |
 
 ---
 
 ## 2. ディレクトリ構成
 
 ```
-dataform/
+common-data-model/
 ├── definitions/
-│   ├── sources/                      # ① ソース宣言（declaration）＋軽い変換
-│   │   └── <source_system>/
-│   │       ├── <source_system>.sqlx          # declaration（生テーブル）
-│   │       └── <source_system>_filtered.sqlx # フィルタ等の軽い変換（任意）
-│   ├── intermediate/                 # ② 結合・本格的な変換（API非公開）
-│   │   └── stg_<topic>.sqlx
-│   └── outputs/                      # ③ 出力テーブル＝API公開面（エンティティ単位）
-│       ├── order/
-│       │   └── order_detail.sqlx
-│       ├── requisition/
-│       │   └── requisition.sqlx
-│       ├── invoice/
-│       │   └── invoice.sqlx
-│       └── man_hour/
-│           └── man_hour.sqlx
+│   ├── sources/                      # ① ソース宣言（declaration）。源泉システム別サブフォルダ
+│   │   ├── sap/
+│   │   │   └── sap_cost_master_raw.sqlx
+│   │   └── coupa/
+│   ├── intermediate/                 # ② Silver: dim_*/fct_* をフラットに置く（API非公開）
+│   │   ├── dim_department.sqlx
+│   │   └── fct_department_cost.sqlx
+│   └── outputs/                      # ③ Gold＝API公開面: 業務名の .sqlx をフラットに置く
+│       └── cost_management.sqlx
 ├── includes/                         # 共通 JS/SQLX ヘルパ（増やさない）
 │   ├── constants.js                  #   project/dataset を vars 経由で参照
 │   ├── naming.js                     #   命名規約マクロ
 │   └── assertions.js                 #   共通アサーション
 ├── workflow_settings.yaml            # 環境非依存: defaultProject/Dataset/Location, dataformCoreVersion, vars
 ├── package.json
-│   # ★環境差（dev/stg/prod）はデプロイ時の CLI コンパイラオプション（--default-database 等）で注入。
-│   #   environments/*.json は使うとしてもローカル用で「非コミット」（CLI 路線。repository-strategy.md・migration-plan.md と整合）。
 └── .github/workflows/
 ```
 
-`definitions/` 直下を **ワークフローの段階（sources → intermediate → outputs）** で 3 分割するのが Dataform 公式の標準構造。各段階の中をビジネスドメイン（`order`, `invoice` …）のサブディレクトリで分ける。テーブルが増えてもフォルダ構成は変えず、ドメインディレクトリを足していく。
+`definitions/` 直下は **ワークフローの段階（sources → intermediate → outputs）** で 3 分割し、`intermediate` / `outputs` の中はサブディレクトリを切らずフラットに置く（フォルダ名 = データセット名）。テーブルが増えても `.sqlx` ファイルを足すだけでフォルダ構成は変えない。
 
 ---
 
-## 3. 層ごとの命名規約
+## 3. 層ごとのテーブル命名（決定の要約）
 
-### ① sources/（ソース宣言）
+| 層 | データセット | 命名 | 例 |
+|---|---|---|---|
+| Bronze（源泉宣言） | `bronze` | `<source>_<table>_raw` | `sap_cost_master_raw` |
+| Silver | `intermediate` | `dim_*` / `fct_*` | `dim_department`, `fct_department_cost` |
+| Gold | `outputs` | 業務名のみ（接頭辞なし） | `cost_management` |
 
-外部の生テーブルを `type: "declaration"` で宣言する層。+ 軽いフィルタ程度の変換まで。
+- `outputs` のテーブル名は API エンドポイントと語彙を揃える（例: `/v1/cost-management` ↔ `outputs.cost_management`）。
+- 洗浄層 `stg_<source>_<table>` の置き場所は `../02-architecture/bigquery-dataform-design-rules.md` の未決事項。
+- 接頭辞の採否基準（冗長性の検査）と調査経緯は同書の付録。
 
-- **ソースシステム名をプレフィックス**にする（公式要件）。
-- ファイル名でどの外部ソース由来か分かるようにする。
+### sources/（ソース宣言）の書き方
 
-| 種別 | 命名例 |
-|---|---|
-| declaration | `erp.sqlx` / `erp_orders.sqlx` |
-| 軽い変換 | `erp_orders_filtered.sqlx` |
+外部の生テーブルを `type: "declaration"` で宣言する層。ソースシステム名をファイル名・サブフォルダの両方に含める。
 
 ```sqlx
 config {
   type: "declaration",
-  schema: "raw_erp",
-  name: "orders",
+  schema: "bronze",
+  name: "sap_cost_master_raw",
 }
 ```
 
-### ② intermediate/（中間変換）
-
-複数ソースの結合や本格的な変換ロジック。**BI ツール・API には公開しない**前提。
-
-- **中間ディレクトリ専用の固有プレフィックス `stg_` を付ける**（公式要件: 中間ファイルだと一目で分かるようにする）。
-- すべて document & test（assertions）する。
-
-| 命名例 |
-|---|
-| `stg_orders_joined.sqlx` |
-| `stg_order_line_enriched.sqlx` |
-
-### ③ outputs/（出力テーブル）
-
-ビジネス/分析目的の最終テーブル。本プロジェクトでは **API の公開面**に対応し、エンティティ単位のサブディレクトリで管理。
-
-- **ファイル名は簡潔に**（公式要件）。層プレフィックスは付けない。
-- ディレクトリ（ドメイン）＋簡潔なテーブル名で表現する。
-
-| ドメイン（ディレクトリ） | ファイル＝テーブル名 |
-|---|---|
-| `outputs/order/` | `order_detail.sqlx`, `order.sqlx` |
-| `outputs/invoice/` | `invoice.sqlx`, `invoice_line.sqlx` |
-| `outputs/man_hour/` | `man_hour.sqlx` |
+### outputs/（Gold）の書き方
 
 ```sqlx
 config {
   type: "table",
-  schema: "outputs",        -- 環境差は vars で吸収
-  description: "注文明細。1行＝注文1明細",
+  schema: "outputs",
+  description: "コスト管理。1行＝部門×期間のコスト集計",
   assertions: {
-    nonNull: ["order_id", "line_no"],
-    uniqueKey: ["order_id", "line_no"],
+    nonNull: ["department_id", "period"],
+    uniqueKey: ["department_id", "period"],
   },
 }
 ```
@@ -132,9 +100,9 @@ config {
 
 | 対象 | 規約 |
 |---|---|
-| **schema（dataset）** | `config.schema` は `sources` 系 / `intermediate` / `outputs` 等で分ける。環境（dev/stg/prod）の出し分けはデプロイ時の CLI コンパイラオプション（`--default-database` 等）で注入し、**名前にハードコードしない**（注入方式の正は `repository-strategy.md`・`migration-plan.md`） |
-| **assertions** | ファイル名は対象テーブル基準で `assert_<table>_<rule>.sqlx`（例 `assert_order_detail_unique.sqlx`）。`intermediate` / `outputs` は document & test を必須 |
-| **tags** | 実行単位を表す小文字 snake_case（`tag: ["daily", "order"]`）。スケジュール/部分実行のフィルタに使う |
+| **schema（dataset）** | `config.schema` は `intermediate` / `outputs` 等のデータセット名と一致させる。環境（dev/stg/prod）の出し分けはデプロイ時に注入し、**名前にハードコードしない**（注入方式の正は `../02-architecture/bigquery-dataform-design-rules.md`・`../02-architecture/repository-strategy.md`） |
+| **assertions** | ファイル名は対象テーブル基準で `assert_<table>_<rule>.sqlx`（例 `assert_cost_management_unique.sqlx`）。`intermediate` / `outputs` は document & test を必須 |
+| **tags** | 実行単位を表す小文字 snake_case（`tag: ["daily", "cost"]`）。スケジュール/部分実行のフィルタに使う |
 | **includes/** | 共通ヘルパのみ。`constants.js`（project/dataset を vars 経由）、`naming.js`、`assertions.js`。むやみに増やさない |
 
 ---
@@ -144,19 +112,21 @@ config {
 命名規約に合わせる際の名称対応の一例:
 
 ```
-旧: ORDER_DETAIL
-新: definitions/outputs/order/order_detail.sqlx  →  テーブル order_detail
+旧: Fact_COST_DETAIL
+新: definitions/intermediate/fct_cost_detail.sqlx  →  テーブル fct_cost_detail
 ```
 
-実際の移行は破壊的なので、順番・後方互換ビュー・契約変更としての段階適用・全エンティティの as-is→to-be 対応表は [`migration-plan.md`](migration-plan.md) が正本。本書（命名規約）としては「新規・改修分は最初から小文字 snake_case」「リネームは契約変更扱い」だけ押さえる。
+実際の移行は破壊的なので、順番・後方互換ビュー・契約変更としての段階適用・全エンティティの as-is→to-be 対応表は [`migration-plan.md`](migration-plan.md) が正本。本書（命名規約）としては「新規・改修分は最初から規約準拠」「リネームは契約変更扱い」だけ押さえる。
 
 ---
 
-## 7. 公式リファレンス
+## 7. 公式リファレンスとの差分
 
-- Structuring code in a repository（`sources`/`intermediate`/`outputs` の段階構造、ファイル名はサブディレクトリ構造を反映）
+Dataform 公式は `sources / intermediate / outputs` の段階構造、intermediate への固有プレフィックス、outputs の簡潔名を推奨する。本プロジェクトは段階構造を踏襲しつつ、**「フォルダ名 = データセット名（フラット配置）」と「Silver = `dim_`/`fct_`、Gold = 業務名のみ」をハウスルールとして優先**する（判断基準は `../02-architecture/bigquery-dataform-design-rules.md` 付録）。
+
+- Structuring code in a repository（段階構造）
   https://cloud.google.com/dataform/docs/structure-repositories
-- Best practices for repositories（全ファイル名は BigQuery テーブル命名規則に準拠／sources はソース名プレフィックス／intermediate は固有プレフィックス／outputs は簡潔に）
+- Best practices for repositories（全ファイル名は BigQuery テーブル命名規則に準拠／sources はソース名プレフィックス）
   https://cloud.google.com/dataform/docs/best-practices-repositories
 - Best practices for the workflow lifecycle（dev/prod のソース宣言分離と命名一貫性）
   https://cloud.google.com/dataform/docs/managing-code-lifecycle
