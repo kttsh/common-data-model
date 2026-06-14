@@ -3,7 +3,7 @@
 > ステータス: 調査メモ（アーキテクチャ判断材料）
 > スコープ: **読み取り（GET）系の行方向フィルタリング**の層配置
 > 前提: 認証=Entra ID、認可属性=Open-GIM（社内ユーザーリポジトリ）、データ=BigQuery、API=FastAPI（ARO 上のコンテナ）、**API→BigQuery は単一サービスアカウント（SA）でアクセス**
-> Related: `authorization-strategy.md`, `../04-research/authorization-models-and-standards-2026.md`
+> Related: `authorization-strategy.md`, `open-issues-and-options.md`（未決論点の正本）, `../90-research/authorization-models-and-standards-2026.md`
 > 情報時点: 2026年5月
 
 ---

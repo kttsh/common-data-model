@@ -18,7 +18,8 @@
 ## 03 Authorization
 
 - `03-authorization/glossary.md`: 認可ドキュメント共通の略語・用語集（**用語の正本**。各認可文書はここを参照し、個別の略語表は持たない）。
-- `03-authorization/authorization-strategy.md`: 権限制御の論点整理と技術方針。
+- `03-authorization/authorization-strategy.md`: 権限制御の全体方針の入口（確定事項のサマリ）。
+- `03-authorization/open-issues-and-options.md`: **未決論点と対応パターンの正本**。各論点を 問い／対応パターン（メリデメ）／推奨／実施内容 で整理。パターンカタログ（旧 P1〜P5）と PoC 検証項目を含む。
 - `03-authorization/authorization-boundaries-and-interface.md`: PEP/PDP 責務分担と `authorize()` インターフェースの決定メモ。
 - `03-authorization/pycasbin/basic-specification.md`: PyCasbin の基本仕様、対応モデル、FastAPI/PDP 内で担う範囲の調査メモ。
 - `03-authorization/pycasbin/policy-examples-purchase-order.md`: 注文伝票を題材にした PyCasbin ポリシー定義例（居住国・部門・役職・列マスクなど）。「基本的な仕組み → 実例 → 補足 → BQ 展開イメージ」の順で、特性のあるコードの捌き方とルール定義方法に集中。

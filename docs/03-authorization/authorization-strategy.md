@@ -1,5 +1,7 @@
 # Authorization Strategy
 
+権限制御の全体方針の入口。確定した方針をここにまとめ、**未決論点は [`open-issues-and-options.md`](open-issues-and-options.md) を正本**とする（本書では蒸し返さない）。
+
 ---
 
 ## 略語・用語
@@ -8,76 +10,36 @@
 
 ---
 
-## Part 1. 叩き台への論点・指摘
+## 1. 確定した方針
 
-「モデル単位の権限制御」という方向性自体は妥当。FIX させる前に潰しておきたい論点を重要度順に並べる。
+「モデル単位の権限制御」という方向性は妥当。叩き台レビューを経て、次の方針が固まっている。実体は各正本を参照。
 
-### ① 【最重要】Entra ID だけで属性が揃う前提が崩れている
-
-- 叩き台②は「Entra ID から人事情報（役職・所属）を取得」「Entra ID は最新人事と紐づくため棚卸不要」としている。
-- 実際の Entra ID が持つのは ID・メール・せいぜいグループ程度で、原価センタ・職位・事業単位などの認可に必要な粒度は入っていない。
-- `docs/01-requirements/product-requirements.md` でも「ユーザー属性はオンプレ SQL Server に実装・運用」と明記。
-- **実態**: ID（認証）は Entra ID、認可属性は社内ユーザーリポジトリ（Open-GIM）を実行時に別途参照する二段構え。
-- **影響**: 「棚卸不要」の根拠が変わる。鮮度は Entra ID ではなく Open-GIM の鮮度に依存する。
-- → 明日の最大論点。
-
-### ② Open-GIM（社内ユーザーリポジトリ）の参照方式・正本範囲を確定する
-
-- **確定事項**: Open-GIM ＝ 社内ユーザーリポジトリ。役職・所属など認可に使う属性の正本はここ。叩き台②の「Entra ID から人事情報を取得」は、正しくは「Entra ID で認証 → Open-GIM から属性取得」。
-- **残る確認事項**:
-  - Open-GIM と `docs/01-requirements/product-requirements.md` が言う「オンプレ SQL Server（ExpressRoute 接続）」は同一か別物か。同一なら接続経路はそのまま、別物なら Open-GIM への到達経路（プロトコル・認証・閉域到達性）を定義する。
-  - Open-GIM が保持する属性項目（役職レベルの区分、所属＝会社/部署/グループ、原価センタ、居住地など）の一覧と、各項目のキー（Entra ID の oid / UPN など何で突合するか）。
-- これが認可設計（ABAC のポリシー入力）の前提になる。
-
-### ③ 「SQL ライク（WHERE / SELECT）条件設定」は設計リスクが大きい
-
-- 叩き台①は権限条件を WHERE / SELECT で記述する案で、参照に DAB を挙げている。
-- (a) 参照先の DAB は今回不採用（`../02-architecture/data-api-builder-assessment.md` 参照）。
-- (b) モデルオーナーが生 SQL 風の述語を自由記述する形は、インジェクション・正しさの検証・レビュー・変更履歴管理が難しい。
-- (c) 「SELECT による列制御」の実体は列の許可/拒否リスト。自由 SQL ではなく統制された記法（ポリシー定義フォーマット）にすべき。
-- → `../02-architecture/platform-architecture-decision.md` の D2（認可エンジン選定。**PyCasbin 埋め込みで確定**）と接続。統制された記法は PyCasbin の PERM モデル＋ポリシー（`pycasbin/`）で実現する。
-
-### ④ 「申請なし・全社デフォルト権限」と監査・最小権限の緊張
-
-- 要件「全社ユーザが申請なしでアクセス」と③のデフォルト権限は、`docs/01-requirements/product-requirements.md` の「監査ログ必須」「原価・単価などセンシティブ列の制御」とそのままでは両立しない。
-- 叩き台自身の人事モデル例（人事部門以外は個人情報項目を閲覧不可）が示す通り、答えは「入口は全社開放、ただし行・列はモデル別ポリシーで常時適用」。
-- **言い換え**: 「デフォルト＝開放」ではなく「デフォルト＝開放だが行列制御は常時適用」。そうしないと過剰権限付与に読める。
-
-### ⑤ サービスアカウント（T ユーザー）と AI エージェントの扱いが矛盾しうる
-
-- 叩き台は「システムからのアクセスは T ユーザー」とする一方、具体例では AI エージェントが「所属部署のデータのみ」に自動制限されている。
-- 後者は人間の文脈を引き継ぐ（On-Behalf-Of）動きで、「T ユーザー固定権限」とは別物。
-- エージェント経由が OBO なのかサービス ID 固定なのかを切り分けて定義する。
-- `docs/01-requirements/product-requirements.md` でも SA 属性管理は未確定（L7）。明日詰める価値あり。
-
-### ⑥ 「職改時メンテ不要」は条件付き
-
-- ルールを属性参照で書けば人事異動には自動追従するが、組織改編で原価センタ体系・部署コード体系そのものが再編されるとルール側の見直しは発生する。
-- 「人事異動には不要、組織再編時は要見直し」と精度を上げて記述する。
-
-### ⑦ 行レベルの複数粒度が例で表現しきれていない
-
-- `docs/01-requirements/product-requirements.md` は行レベルを「起票者単位〜事業単位の複数粒度」とするが、叩き台の例は部署単位中心。
-- 起票者／部署／事業／全社のどれをどう記述するか、「主席以上」「部長以上」のしきい値をどこで定義するかをルール記法の設計に含める。
-
-### ⑧ 監査の「どの条件で参照したか」を残す設計が抜けている
-
-- 動的に WHERE を注入する方式なら、実際に適用したフィルタ条件を監査ログに残すのがガバナンスの肝。
-- 叩き台には監査の記述がない。方針に一文入れる。
-
-### ⑨ 属性参照とキャッシュ・レイテンシの接続
-
-- 毎リクエストで社内リポジトリを引くとレイテンシ・負荷が増える（`docs/02-architecture/platform-architecture-decision.md` R6）。
-- 属性キャッシュの TTL を認可設計とセットで決めないと、100〜500ms 目標と衝突する。
+| # | 方針 | 要点 | 正本 |
+|---|---|---|---|
+| 1 | 認証と認可属性の分離（二段構え） | 認証は Entra ID、認可属性は **Open-GIM**。Entra ID は ID・メール・グループ程度しか持たず、原価センタ・職位・事業単位などは Open-GIM が正本。鮮度は Open-GIM の同期鮮度に依存する | [`open-issues-and-options.md`](open-issues-and-options.md)（論点8,9） |
+| 2 | 統制された記法でポリシーを書く | モデルオーナーに自由 SQL（WHERE/SELECT）を書かせない。インジェクション・検証・レビュー・履歴管理のリスクを避け、**PyCasbin の PERM モデル＋ポリシー**と統制された語彙（`row_scope`／列許可）に倒す | [`../90-research/abac-authz-library-comparison.md`](../90-research/abac-authz-library-comparison.md) |
+| 3 | 入口開放＋行列制御は常時適用 | 「全社ユーザが申請なしでアクセス」と監査・最小権限を両立させる答えは「デフォルト＝開放だが行・列はモデル別ポリシーで常時適用」。過剰権限付与に読めないよう言い換える | [`open-issues-and-options.md`](open-issues-and-options.md)（論点1） |
+| 4 | 職改への追従は条件付き | 属性参照で書けば**人事異動には自動追従**するが、組織改編で原価センタ体系・部署コード体系が再編されると**ルール側の見直しは発生する** | [`open-issues-and-options.md`](open-issues-and-options.md)（論点13,16） |
+| 5 | 監査は「適用した条件」を残す | 動的に WHERE を注入するため、実際に適用したフィルタ条件と判定理由を監査ログに残すのがガバナンスの肝 | [`open-issues-and-options.md`](open-issues-and-options.md)（論点14） |
+| 6 | 認可は API 層 ABAC・2 段判断 | ①粗い gate（allow/deny、deny は 403 で短絡）→ ②行フィルタ・列マスク生成。`authorize()` は `row_filter`(AST) と `masked_columns` を返す | [`authorization-boundaries-and-interface.md`](authorization-boundaries-and-interface.md) |
+| 7 | ランタイム・エンジンの確定 | ランタイムは **ARO（Azure Red Hat OpenShift）上のコンテナで確定**（2026-06 に App Service から切替。補助バッチのランタイムは未決）。言語・FW は **Python / FastAPI**、認可エンジンは **PyCasbin（埋め込み）で確定** | [`../02-architecture/platform-architecture-decision.md`](../02-architecture/platform-architecture-decision.md)、[`../02-architecture/runtime-framework-decision.md`](../02-architecture/runtime-framework-decision.md) |
 
 ---
 
-## Next Discussion Points
+## 2. 未決論点
 
-1. **①Entra ID 属性問題**: 認証は Entra ID、認可属性は Open-GIM（社内ユーザーリポジトリ）という二段構えで合意できるか。Open-GIM の参照方式・属性項目・突合キーの確定（②）。
-2. **③SQL ライク条件の統制方法**: 自由 SQL ではなく、レビュー可能なポリシー定義フォーマットに倒す。**エンジンは PyCasbin（埋め込み）で確定**（`pycasbin/`）。外部 PDP（Cerbos/OPA）は将来オプション。
-3. **⑤T ユーザー／AI エージェントの認可**: OBO かサービス ID 固定かの切り分け。
-4. **④デフォルト権限の言い換え**: 「入口開放＋行列制御常時適用」で合意。
-5. ランタイムは **ARO（Azure Red Hat OpenShift）上のコンテナで確定**（2026-06 に App Service から切替。補助バッチのランタイムは未決）。**言語・FW は Python / FastAPI に確定**（`../02-architecture/runtime-framework-decision.md`）。
+叩き台レビューで挙がった論点（Open-GIM 参照仕様、統制記法の具体、SA/AI エージェントの扱い、行レベル粒度、属性キャッシュ・レイテンシ ほか）は、対応パターン・メリデメ・推奨・実施内容とともに **[`open-issues-and-options.md`](open-issues-and-options.md) に集約**した。最優先は次の 3 つ。
+
+- 論点3：利用者の BigQuery 直接接続要件の確定（任意 SQL か／接続 ID は誰か）。
+- 論点6：条件 AST→BigQuery 翻訳層 / `row_filter` 生成方式。
+- 論点8：Open-GIM 参照仕様の確定（同一性・属性項目・突合キー・到達経路）。
 
 ---
+
+## 3. 関連ドキュメント
+
+- [`open-issues-and-options.md`](open-issues-and-options.md) — 未決論点と対応パターンの正本。
+- [`authorization-boundaries-and-interface.md`](authorization-boundaries-and-interface.md) — PEP/PDP 責務分担と `authorize()` インターフェースの正本。
+- [`row-level-filtering-layering.md`](row-level-filtering-layering.md) — 行レベル絞り込みの層分担。
+- [`shared-pdp-across-api-and-bigquery.md`](shared-pdp-across-api-and-bigquery.md) — PDP を API/BQ 経路で共用する将来オプション。
+- [`pycasbin/`](pycasbin/basic-specification.md) — PyCasbin 基本仕様・ポリシー定義例・BigQuery 展開実装。

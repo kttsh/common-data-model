@@ -138,10 +138,4 @@ async def get_records(model: str, principal = Depends(authenticate)):
 
 ## 8. 未決事項 / 次アクション
 
-| # | 項目 | 内容 |
-|---|---|---|
-| 1 | ポリシー言語/エンジン | **【決定】PyCasbin（埋め込み）を採用**（D2 クローズ。`../04-research/abac-authz-library-comparison.md`、`pycasbin/`）。外部 PDP（Cerbos/OPA）は将来オプション。残課題は `model.conf` の PERM 設計と `row_filter` 生成方式 |
-| 2 | 条件 AST → BigQuery 翻訳層 | PlanResources/Compile 出力 → BigQuery パラメータ化 SQL のマッピング設計 |
-| 3 | SA/エージェントの token | RFC 8693 delegation（OBO）/ impersonation の使い分けと Entra ID 実装（OBO フロー）確認 |
-| 4 | Open-GIM 参照仕様 | 突合キー・属性項目・到達経路（論点② と連動） |
-| 5 | PoC | 「部門費モデル」で subject→属性→Decision→生成 WHERE→BigQuery 実行→列マスク の一連を最小実装 |
+本書に関わる未決事項（ポリシー言語/エンジンの残課題、条件 AST→BigQuery 翻訳層、SA/エージェントの token、Open-GIM 参照仕様、PoC）は、対応パターン・推奨・実施内容とともに **[`open-issues-and-options.md`](open-issues-and-options.md) に集約**した（論点5・6・8・12、§6 PoC）。エンジンは **PyCasbin（埋め込み）で確定**（D2。`../90-research/abac-authz-library-comparison.md`、`pycasbin/`）、外部 PDP は将来オプション。
