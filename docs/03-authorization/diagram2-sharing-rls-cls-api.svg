@@ -1,0 +1,142 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1360 975">
+  <defs>
+    <style>
+      text{font-family:'Noto Sans JP','Hiragino Kaku Gothic ProN','Yu Gothic',Meiryo,-apple-system,'Segoe UI',Roboto,sans-serif;}
+      .ttl{font-size:22px;font-weight:700;fill:#1864ab}
+      .sub{font-size:13px;fill:#495057}
+      .h{font-size:14.5px;font-weight:700;fill:#1864ab}
+      .bt{font-size:12.5px;font-weight:700}
+      .b{font-size:11.5px;fill:#343a40}
+      .s{font-size:10px;fill:#495057}
+      .xs{font-size:9.5px;fill:#868e96}
+    </style>
+    <marker id="ag" viewBox="0 0 10 10" markerWidth="8" markerHeight="8" refX="9" refY="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#495057"/></marker>
+    <marker id="agold" viewBox="0 0 10 10" markerWidth="8.5" markerHeight="8.5" refX="9" refY="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#f08c00"/></marker>
+    <marker id="ate" viewBox="0 0 10 10" markerWidth="8" markerHeight="8" refX="9" refY="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0ca678"/></marker>
+    <marker id="abl" viewBox="0 0 10 10" markerWidth="8" markerHeight="8" refX="9" refY="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1971c2"/></marker>
+    <marker id="agr" viewBox="0 0 10 10" markerWidth="8" markerHeight="8" refX="9" refY="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2f9e44"/></marker>
+  </defs>
+
+  <rect x="2" y="2" width="1356" height="971" rx="10" fill="#ffffff" stroke="#dee2e6" stroke-width="1.5"/>
+  <text x="680" y="38" text-anchor="middle" class="ttl">BigQuery sharing / Authorized View / RLS / CLS と API ポリシー判定の関係</text>
+  <text x="680" y="62" text-anchor="middle" class="sub">同じワンマートに2つのドア（BQネイティブ / API）。ポリシーは1つ・強制点は複数。</text>
+
+  <!-- Top inputs -->
+  <rect x="70" y="100" width="210" height="70" rx="8" fill="#edf2ff" stroke="#4263eb" stroke-width="1.6"/>
+  <text x="175" y="128" text-anchor="middle" class="bt" fill="#364fc7">Entra ID（認証）</text>
+  <text x="175" y="148" text-anchor="middle" class="s">両チャネル共通の authn</text>
+
+  <rect x="300" y="100" width="230" height="70" rx="8" fill="#e6fcf5" stroke="#0ca678" stroke-width="1.6"/>
+  <text x="415" y="128" text-anchor="middle" class="bt" fill="#087f5b">OpenGIM（属性 / PIP）</text>
+  <text x="415" y="148" text-anchor="middle" class="s">役職・所属・原価センタ 等</text>
+
+  <rect x="560" y="90" width="320" height="92" rx="10" fill="#fff9db" stroke="#f59f00" stroke-width="2"/>
+  <text x="720" y="118" text-anchor="middle" class="bt" font-size="14" fill="#e67700">単一ポリシー源（PAP / カタログ）</text>
+  <text x="720" y="140" text-anchor="middle" class="s">Rego（policy-as-product）</text>
+  <text x="720" y="160" text-anchor="middle" class="s">1つのポリシーから両強制点へ（生成 / 参照）</text>
+
+  <!-- gold arrows: policy -> BQ, policy -> API -->
+  <line x1="715" y1="182" x2="702" y2="358" stroke="#f08c00" stroke-width="2" marker-end="url(#agold)"/>
+  <text x="612" y="300" class="s" fill="#e67700" font-weight="700">→ BQ: RLS/CLS</text>
+  <path d="M860,172 C1050,205 1175,285 1170,358" fill="none" stroke="#f08c00" stroke-width="2" marker-end="url(#agold)"/>
+  <text x="1035" y="245" class="s" fill="#e67700" font-weight="700">→ API: PDP</text>
+
+  <!-- teal arrows: OpenGIM -> ref (sync), OpenGIM -> API (request-time) -->
+  <polyline points="460,170 460,210 922,210 922,560 882,560" fill="none" stroke="#0ca678" stroke-width="1.7" marker-end="url(#ate)"/>
+  <text x="690" y="204" class="s" fill="#087f5b" font-weight="700">① 同期 → ref 表（BQネイティブ用）</text>
+  <polyline points="505,170 505,236 1095,236 1095,358" fill="none" stroke="#0ca678" stroke-width="1.7" marker-end="url(#ate)"/>
+  <text x="770" y="230" class="s" fill="#087f5b" font-weight="700">② request-time（API用属性）</text>
+
+  <!-- Hub: BigQuery Publisher Project -->
+  <rect x="470" y="360" width="430" height="380" rx="12" fill="#f5f9ff" stroke="#1971c2" stroke-width="2"/>
+  <text x="490" y="384" class="h">BigQuery — Publisher Project</text>
+
+  <rect x="492" y="398" width="386" height="58" rx="6" fill="#e7f1ff" stroke="#1971c2" stroke-width="1.4"/>
+  <text x="685" y="421" text-anchor="middle" class="bt" fill="#1864ab">ワンマート mart.dept_cost</text>
+  <text x="685" y="440" text-anchor="middle" class="s">（複製しない・単一の事実表）</text>
+
+  <rect x="492" y="470" width="186" height="56" rx="6" fill="#f3e8ff" stroke="#7048e8" stroke-width="1.4"/>
+  <text x="585" y="490" text-anchor="middle" class="b" font-weight="700" fill="#5f3dc4">RLS（行）</text>
+  <text x="585" y="507" text-anchor="middle" class="xs" fill="#495057">ref参照・SESSION_USER</text>
+
+  <rect x="692" y="470" width="186" height="56" rx="6" fill="#ffe3ec" stroke="#d6336c" stroke-width="1.4"/>
+  <text x="785" y="490" text-anchor="middle" class="b" font-weight="700" fill="#a61e4d">CLS（列）</text>
+  <text x="785" y="507" text-anchor="middle" class="xs" fill="#495057">予算=全員 / 実績=管理職</text>
+
+  <rect x="492" y="538" width="186" height="64" rx="6" fill="#fff4e6" stroke="#f08c00" stroke-width="1.4"/>
+  <text x="585" y="558" text-anchor="middle" class="b" font-weight="700" fill="#e8590c">Authorized View</text>
+  <text x="585" y="574" text-anchor="middle" class="xs" fill="#495057">views.dept_cost_v</text>
+  <text x="585" y="589" text-anchor="middle" class="xs" fill="#495057">別データセット・意味層</text>
+
+  <rect x="692" y="538" width="186" height="64" rx="6" fill="#e6fcf5" stroke="#0ca678" stroke-width="1.4"/>
+  <text x="785" y="558" text-anchor="middle" class="b" font-weight="700" fill="#087f5b">ref データセット</text>
+  <text x="785" y="574" text-anchor="middle" class="xs" fill="#495057">属性（同期で実体化）</text>
+  <text x="785" y="589" text-anchor="middle" class="xs" fill="#495057">RLSサブクエリ参照先</text>
+
+  <text x="492" y="628" class="s">データ層の強制 → どのクライアントも一律（SESSION_USER で評価）</text>
+  <text x="492" y="645" class="s" fill="#c2255c">→ 直BQ / sharing 購読者は API を素通り。ゆえに RLS/CLS は必須</text>
+
+  <!-- Channel A (left) -->
+  <text x="60" y="332" class="h">チャネルA：BQネイティブ（DB参照）</text>
+  <rect x="70" y="360" width="240" height="70" rx="8" fill="#e7f1ff" stroke="#1971c2" stroke-width="1.5"/>
+  <text x="190" y="385" text-anchor="middle" class="bt" fill="#1864ab">BigQuery sharing</text>
+  <text x="190" y="404" text-anchor="middle" class="s">Exchange + Listing（公開）</text>
+
+  <rect x="70" y="470" width="240" height="76" rx="8" fill="#e7f1ff" stroke="#1971c2" stroke-width="1.5"/>
+  <text x="190" y="492" text-anchor="middle" class="bt" fill="#1864ab">Subscriber Project</text>
+  <text x="190" y="510" text-anchor="middle" class="s">linked dataset（読取専用）</text>
+  <text x="190" y="526" text-anchor="middle" class="s">bigquery.user のみで参照</text>
+
+  <rect x="70" y="586" width="240" height="70" rx="8" fill="#f1f3f5" stroke="#868e96" stroke-width="1.4"/>
+  <text x="190" y="610" text-anchor="middle" class="b" font-weight="700">BQネイティブ消費者</text>
+  <text x="190" y="628" text-anchor="middle" class="s">SQL / BI（自分の identity）</text>
+
+  <line x1="470" y1="395" x2="312" y2="395" stroke="#1971c2" stroke-width="1.7" marker-end="url(#abl)"/>
+  <text x="332" y="388" class="xs" fill="#1864ab">公開（View / データセット）</text>
+  <line x1="190" y1="430" x2="190" y2="470" stroke="#1971c2" stroke-width="1.7" marker-end="url(#abl)"/>
+  <line x1="190" y1="546" x2="190" y2="586" stroke="#1971c2" stroke-width="1.7" marker-end="url(#abl)"/>
+  <text x="70" y="676" class="s" fill="#c2255c">強制 = RLS/CLS/AuthView を SESSION_USER で評価</text>
+  <text x="70" y="692" class="xs" fill="#c2255c">（API を通らない）。Entra 認証で購読者を識別</text>
+
+  <!-- Entra -> consumerA (far left) -->
+  <polyline points="120,170 58,170 58,621 68,621" fill="none" stroke="#868e96" stroke-width="1.3" stroke-dasharray="4 3" marker-end="url(#ag)"/>
+  <text x="40" y="400" class="xs" transform="rotate(-90 40 400)">認証</text>
+
+  <!-- Channel B (right) -->
+  <text x="1010" y="332" class="h" fill="#2b8a3e">チャネルB：API（プログラム / エージェント）</text>
+  <rect x="1010" y="360" width="320" height="92" rx="8" fill="#ebfbee" stroke="#2f9e44" stroke-width="1.6"/>
+  <text x="1170" y="384" text-anchor="middle" class="bt" fill="#2b8a3e">FastAPI（Azure App Service）</text>
+  <text x="1170" y="404" text-anchor="middle" class="s">PEP（middleware）</text>
+  <text x="1170" y="422" text-anchor="middle" class="s">+ PDP（OPA / Rego 埋込）</text>
+  <text x="1170" y="440" text-anchor="middle" class="xs" fill="#2b8a3e">同一 Rego を部分評価 → WHERE 生成</text>
+
+  <rect x="1010" y="486" width="320" height="56" rx="8" fill="#ebfbee" stroke="#2f9e44" stroke-width="1.5"/>
+  <text x="1170" y="508" text-anchor="middle" class="b" font-weight="700" fill="#2b8a3e">Publisher SA（鍵レス WIF）</text>
+  <text x="1170" y="526" text-anchor="middle" class="s">でワンマートを読取（TRUE 除外）</text>
+
+  <rect x="1010" y="560" width="320" height="72" rx="8" fill="#f8f9fa" stroke="#adb5bd" stroke-width="1.3" stroke-dasharray="5 4"/>
+  <text x="1018" y="580" class="s">request-time: Entra認証 → OpenGIM属性(context.py)</text>
+  <text x="1018" y="598" class="s">→ PDP判定 → 部分評価で WHERE 生成 → mart クエリ</text>
+  <text x="1018" y="618" class="s" fill="#c2255c">OPA 部分評価 → WHERE は API チャネル内のみ有効</text>
+
+  <rect x="1010" y="660" width="320" height="58" rx="8" fill="#f1f3f5" stroke="#868e96" stroke-width="1.4"/>
+  <text x="1170" y="683" text-anchor="middle" class="b" font-weight="700">REST 消費者 / エージェント</text>
+  <text x="1170" y="701" text-anchor="middle" class="s">Entra 認証で API を呼ぶ</text>
+
+  <line x1="1170" y1="452" x2="1170" y2="486" stroke="#2f9e44" stroke-width="1.7" marker-end="url(#agr)"/>
+  <polyline points="1330,690 1346,690 1346,408 1332,408" fill="none" stroke="#2f9e44" stroke-width="1.6" marker-end="url(#agr)"/>
+  <text x="1300" y="675" class="xs" fill="#2b8a3e">呼出</text>
+  <line x1="1008" y1="512" x2="882" y2="432" stroke="#2f9e44" stroke-width="1.7" marker-end="url(#agr)"/>
+  <text x="900" y="500" class="xs" fill="#2b8a3e">SAで読取</text>
+
+  <!-- Footer notes -->
+  <line x1="40" y1="760" x2="1320" y2="760" stroke="#e9ecef" stroke-width="1.2"/>
+  <text x="40" y="788" class="h">要点（ポリシーは1つ・強制点は複数）</text>
+  <text x="40" y="812" class="s">● API が対象にするのは Publisher のテーブル / ビュー。Subscriber Project は触らない（チャネルA の領域）。</text>
+  <text x="40" y="832" class="s">● データ層（RLS / CLS / Authorized View）＝どのクライアントも一律。直SQL / sharing 購読者はこれだけが守る。</text>
+  <text x="40" y="852" class="s">● API は同一ポリシーを部分評価し WHERE を付加（脳は1つ）。ただし WHERE 付加は API 経由のみ有効＝BQネイティブは RLS が担保。</text>
+  <text x="40" y="872" class="s">● 属性の実体化は二系統：BQネイティブ = ref 表へ同期 / API = request-time に OpenGIM 参照。</text>
+  <text x="40" y="892" class="s">● 正本ポリシー（Rego）は PAP / カタログで一元管理 → BQ(RLS/CLS) と API(PDP) の双方へ生成 / 参照。</text>
+
+  <text x="40" y="932" class="xs">凡例：金=単一ポリシー源→両強制点 / 緑線=属性供給(同期・request-time) / 青=チャネルA(BQネイティブ) / 緑=チャネルB(API) / 灰破線=認証。</text>
+</svg>
