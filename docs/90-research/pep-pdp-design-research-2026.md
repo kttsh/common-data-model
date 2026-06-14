@@ -70,6 +70,8 @@ OWASP は推奨パターンとして「Centralized with embedded PDP」を挙げ
 
 App Service 構成（コンテナ不可）では **サイドカー不可** なので、選択肢は実質「埋め込み」or「別ホスト PDP（短 TTL キャッシュ）」に絞られる。
 
+> 注記（2026-06-14）: 本記述は調査時点（App Service 前提）のもの。ランタイムは **ARO（コンテナ）に変更**され、**サイドカー構成が可能**になった。最新の決定は `../02-architecture/platform-architecture-decision.md` と `../03-authorization/shared-pdp-across-api-and-bigquery.md` を参照。
+
 #### PEP の責務（自前実装する側）
 
 PEP は PDP に比べてシンプルで、認可ロジックを持たない。認可要求を送り、判定結果を評価するだけ。例えば PDP が boolean の allow/deny を返すなら、PEP は HTTP 200/403 にマップする程度。複雑なケースでは PDP が返す JSON を評価し必要なロジックを実装する。

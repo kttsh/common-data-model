@@ -105,7 +105,7 @@
   <!-- Channel B (right) -->
   <text x="1010" y="332" class="h" fill="#2b8a3e">チャネルB：API（プログラム / エージェント）</text>
   <rect x="1010" y="360" width="320" height="92" rx="8" fill="#ebfbee" stroke="#2f9e44" stroke-width="1.6"/>
-  <text x="1170" y="384" text-anchor="middle" class="bt" fill="#2b8a3e">FastAPI（Azure App Service）</text>
+  <text x="1170" y="384" text-anchor="middle" class="bt" fill="#2b8a3e">FastAPI（ARO / OpenShift）</text>
   <text x="1170" y="404" text-anchor="middle" class="s">PEP（middleware）</text>
   <text x="1170" y="422" text-anchor="middle" class="s">+ PDP（OPA / Rego 埋込）</text>
   <text x="1170" y="440" text-anchor="middle" class="xs" fill="#2b8a3e">同一 Rego を部分評価 → WHERE 生成</text>

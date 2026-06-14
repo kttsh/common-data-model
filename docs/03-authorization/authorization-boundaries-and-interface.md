@@ -15,7 +15,7 @@
 | 認可の置き方 | 権限を **独立した機構（PEP/PDP）** として FastAPI と分離。ハンドラに散らさない |
 | 認可判断の構造 | **2段に分ける**：①粗い gate（モデル/エンドポイント単位の allow/deny）→ ②行・列フィルタ生成 |
 | 機構の物理形態 | **まず A：FastAPI 内ライブラリ/モジュール（埋め込み PEP+PDP）** で開始。将来 B：別 PDP サービスへ |
-| 機構と APIM の境界 | APIM＝入口の粗い検証、機構＝App Service 側で属性取得・判断・フィルタ生成 |
+| 機構と APIM の境界 | APIM＝入口の粗い検証、機構＝API（ARO 上の FastAPI）側で属性取得・判断・フィルタ生成 |
 | インターフェース | `authorize(subject, action, resource) -> Decision`。Decision は allow/deny だけでなく **行フィルタ・列マスク指定** を返す |
 | 行絞り込みの執行 | 機構が返したフィルタを FastAPI が **パラメータ化 WHERE** に翻訳し、BigQuery へ押し下げ（pre-filter） |
 | 標準準拠 | PEP↔PDP は AuthZEN 1.0 を意識（後でエンジン差し替え可能に）。SA/エージェントは RFC 8693 の delegation/impersonation で区別 |
@@ -67,8 +67,8 @@
 
 | 案 | 形態 | 長所 | 短所 | 制約適合 |
 |---|---|---|---|---|
-| **A（採用：起点）** | FastAPI 内ライブラリ/モジュール（埋め込み PEP+PDP） | プロセス内・低レイテンシ・追加サービス承認不要 | ポリシーが各アプリに分散しがち | App Service/無コンテナ制約に最適 |
-| B（将来） | 別 PDP サービス（Cerbos/OPA を別 App Service・Function でホスト、HTTP で呼ぶ） | 中央チームがポリシーを一元管理・監査、AuthZEN で差し替え可 | ホップ1回分のレイテンシ、ホスト追加 | サイドカー不可のため別ホスト＋短 TTL キャッシュ |
+| **A（採用：起点）** | FastAPI 内ライブラリ/モジュール（埋め込み PEP+PDP） | プロセス内・低レイテンシ・追加サービス承認不要 | ポリシーが各アプリに分散しがち | プロセス内で最小・追加ホスト不要（ARO でもそのまま動く） |
+| B（将来） | 別 PDP サービス（Cerbos/OPA を**同一 Pod のサイドカー**、または別ホストでホストし HTTP で呼ぶ） | 中央チームがポリシーを一元管理・監査、AuthZEN で差し替え可 | ホップ1回分のレイテンシ（サイドカーなら localhost で最小） | **ARO はサイドカー可**。同居でホップ最小、別ホストなら短 TTL キャッシュで吸収 |
 | C（不採用） | FastAPI の「前」に立つプロキシで裁いてから転送 | ①粗い gate は可 | ②行・列は不可（リクエスト書き換えは脆弱）、APIM と機能重複 | APIM が既に入口を担うため重複 |
 
 **決定**：まず **A（埋め込み）＝ PyCasbin で確定**。ポリシーは PyCasbin の PERM モデル（`model.conf`）＋ポリシー（CSV）で宣言的に書き、共通リポジトリ/パッケージとして配布して分散を防ぐ。モデル API が増え中央集権ガバナンスを強める段階で **B（別 PDP：Cerbos/OPA）** へ移行（将来オプション）。AuthZEN 準拠のインターフェースにしておけば、移行時に PEP 側（FastAPI）コードの変更を最小化できる。
@@ -124,8 +124,8 @@ async def get_records(model: str, principal = Depends(authenticate)):
 ## 6. APIM との境界（重複回避）
 
 - **APIM** = 入口の粗い検証（JWT 事前検証・スロットル・サブスク・ルーティング）。
-- **権限機構** = App Service 側で Open-GIM 属性取得 → ABAC → ①gate → ②フィルタ/マスク生成。
-- C 案（前段プロキシで裁く）を自作すると APIM と機能が重複するため採らない。`../02-architecture/platform-architecture-decision.md` の「APIM で JWT 事前検証 → App Service で再検証＋属性ベース ABAC」の二段と整合。
+- **権限機構** = API（ARO 上の FastAPI）側で Open-GIM 属性取得 → ABAC → ①gate → ②フィルタ/マスク生成。
+- C 案（前段プロキシで裁く）を自作すると APIM と機能が重複するため採らない。`../02-architecture/platform-architecture-decision.md` の「APIM で JWT 事前検証 → ARO 上の FastAPI で再検証＋属性ベース ABAC」の二段と整合。
 
 ---
 

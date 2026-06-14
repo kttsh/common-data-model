@@ -37,7 +37,7 @@ BigQuery 上の基幹システムデータをもとに、**標準データモデ
 - 社内 VPC 内の Azure 上で稼働。
 - **既設の Azure API Management** をフロントに利用（**既存共有インスタンス**）。
   - マルチテナント運用観点で、命名規約・サブスクリプション・製品（Product）構成のルール整理が必要。
-- バックエンド実行基盤は社内で閉域利用可能な Azure サービス（Functions / App Service / Container Apps 等）から選定。
+- バックエンド実行基盤は **Azure Red Hat OpenShift（ARO）上のコンテナ**（2026-06 確定。旧「App Service / Functions のみ・コンテナ不可」制約は撤廃）。正本は `../02-architecture/platform-architecture-decision.md`。
 - 将来 **iPaaS 導入予定** → APIM・本サービス・iPaaS の役割分担を意識した設計とする。
 
 ### 3.3 ネットワーク構成
@@ -107,7 +107,7 @@ BigQuery 上の基幹システムデータをもとに、**標準データモデ
   - **Claude / Devin による AI 支援開発** が機能しやすい、ドキュメント・コミュニティ・型情報が成熟したスタック。
   - **OpenAPI 3.1 / OAuth2 / Azure SDK / BigQuery クライアント** の対応が成熟している言語。
   - 候補（後で比較）: Python (FastAPI) / TypeScript (NestJS, Hono) / C# (.NET minimal API) 等。
-  - **【確定 2026-06】Python / FastAPI を採用**。上記選定指針（AI 支援開発相性・成熟度）に最も合致し、App Service の FastAPI ネイティブ対応（2026 年強化）・BigQuery/Entra/認可ライブラリの成熟も決め手。根拠は `../02-architecture/runtime-framework-decision.md`。
+  - **【確定 2026-06】Python / FastAPI を採用**。上記選定指針（AI 支援開発相性・成熟度）に最も合致し、コンテナ運用（ARO）との親和性・BigQuery/Entra/認可ライブラリの成熟も決め手。根拠は `../02-architecture/runtime-framework-decision.md`。
 - **AI 支援開発のためのコーディング規約・リポジトリ標準（AGENTS.md / CLAUDE.md 等）の整備は別プロジェクトで対応**。
 
 ---
@@ -119,7 +119,7 @@ BigQuery 上の基幹システムデータをもとに、**標準データモデ
 | L1 | 複雑ロジックの配置 | BigQuery ビュー / マテビュー / 中間テーブル / API 層 の比較 |
 | L2 | キャッシュ配置 | APIM 組込み / Redis / BI Engine / マテビュー / アプリ内 の比較 |
 | L3 | 行・列レベル制御の実装方式 | 属性ベース (ABAC) / OPA 等のポリシーエンジン / 独自実装 |
-| L4 | API バックエンドのランタイム | Functions / App Service / Container Apps / AKS の比較。**【確定】App Service（案A）+ 言語・FW は Python / FastAPI**（→ `../02-architecture/runtime-framework-decision.md`） |
+| L4 | API バックエンドのランタイム | **【確定】ARO（Azure Red Hat OpenShift）上のコンテナ（案A）+ 言語・FW は Python / FastAPI**（2026-06 に App Service から切替。旧コンテナ不可制約は撤廃）（→ `../02-architecture/runtime-framework-decision.md`） |
 | L5 | API 設計規約 | JSON:API / OData / 独自、ページング・フィルタ表現の選択 |
 | L6 | OpenAPI 連携方式 | コードファースト vs スキーマファースト |
 | L7 | サービスアカウントの属性管理 | SQL Server 同居 / Entra ID アプリクレーム / 別レジストリ |

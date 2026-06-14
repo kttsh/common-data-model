@@ -2,7 +2,7 @@
 
 > ステータス: 調査メモ（アーキテクチャ判断材料）
 > スコープ: **読み取り（GET）系の行方向フィルタリング**の層配置
-> 前提: 認証=Entra ID、認可属性=Open-GIM（社内ユーザーリポジトリ）、データ=BigQuery、API=FastAPI/App Service、**API→BigQuery は単一サービスアカウント（SA）でアクセス**
+> 前提: 認証=Entra ID、認可属性=Open-GIM（社内ユーザーリポジトリ）、データ=BigQuery、API=FastAPI（ARO 上のコンテナ）、**API→BigQuery は単一サービスアカウント（SA）でアクセス**
 > Related: `authorization-strategy.md`, `../04-research/authorization-models-and-standards-2026.md`
 > 情報時点: 2026年5月
 
@@ -32,7 +32,7 @@
       ▼
 [APIM] ── 認証検証・スロットル・粗いキャッシュ
       ▼
-[FastAPI / App Service]
+[FastAPI / ARO]
    - Entra ID で本人特定
    - Open-GIM から認可属性取得（役職・所属・居住地・原価センタ…）
    - ABAC ポリシー評価 → フィルタ条件を生成
@@ -61,7 +61,7 @@ APIM はゲートウェイであり、得意なのは認証検証・スロット
 
 要するに BigQuery ネイティブの行・列制御はいずれも「**叩いた IAM プリンシパル**」を起点にする。今回は API がプロキシして単一 SA で叩くので、端末ユーザーの粒度には届かない。
 
-### 2.3 FastAPI / App Service 層 → ここが per-user 行制御の主役
+### 2.3 FastAPI / ARO 層 → ここが per-user 行制御の主役
 
 端末ユーザーの属性（部署・役職・居住地・起票者）を持てるのはこの層だけなので、必然的にここが**判断点（PDP/PEP）**になる。流れは、Entra ID で本人特定 → Open-GIM で属性取得 → ABAC ポリシー評価 → **フィルタ条件を生成** → BigQuery にパラメータ化 WHERE として渡す。
 
@@ -82,11 +82,11 @@ APIM はゲートウェイであり、得意なのは認証検証・スロット
 | 層 | 行絞り込みにおける責務 |
 |---|---|
 | **APIM** | 認証（JWT）検証・スロットル・粗いキャッシュ。**行絞り込みはしない** |
-| **FastAPI / App Service** | **判断（ABAC）** と **WHERE 生成（パラメータ化）**。列マスクの適用。監査（適用した条件の記録）。属性は Open-GIM 参照＋短 TTL キャッシュ |
+| **FastAPI / ARO** | **判断（ABAC）** と **WHERE 生成（パラメータ化）**。列マスクの適用。監査（適用した条件の記録）。属性は Open-GIM 参照＋短 TTL キャッシュ |
 | **BigQuery** | **執行**（押し下げ WHERE を実行）。加えて **認可ビュー／認可データセット**で共通モデル公開・SA 最小権限・生テーブル隠蔽、**パーティション／クラスタ**で安く効かせる、**CLS** で保存層の多層防御 |
 
 ```
-判断（誰が何を見てよいか）  →  FastAPI / App Service（ABAC, PDP）
+判断（誰が何を見てよいか）  →  FastAPI / ARO（ABAC, PDP）
 執行（実際に行を絞る）      →  BigQuery（pre-filter された WHERE を実行）
 土台（安く・安全に）        →  認可ビュー + パーティション/クラスタ + CLS
 ```

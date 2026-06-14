@@ -1,6 +1,6 @@
 # テスト基本方針（Test Concept）
 
-このプラットフォーム（Dataform → BigQuery、FastAPI → Azure App Service、埋め込み PEP/PDP）を、どういう考え方でテストするかをまとめた**テスト戦略の正本**。実装コードは別リポジトリ（`dataform` / `api`）にあるが、「何を・どの層で・どの段でテストするか」の設計はここを基準にする。
+このプラットフォーム（Dataform → BigQuery、FastAPI → ARO〔Azure Red Hat OpenShift〕上のコンテナ、埋め込み PEP/PDP）を、どういう考え方でテストするかをまとめた**テスト戦略の正本**。実装コードは別リポジトリ（`dataform` / `api`）にあるが、「何を・どの層で・どの段でテストするか」の設計はここを基準にする。
 
 認可関連の略語（PEP/PDP/RLS/CLS/AST/ABAC など）は [`../03-authorization/glossary.md`](../03-authorization/glossary.md) を参照。テスト固有の用語は本書内で都度説明する。
 
@@ -36,7 +36,7 @@
 | **単体** | 純ロジック（変換ロジック、AST→SQL 翻訳、認可判定、Pydantic 境界）。外部はフェイク／モック | Dataform `type:"test"` / pytest / Hypothesis / `terraform test (plan)` | なし | PR |
 | **統合（最厚）** | 境界をまたいだ実挙動（実 BigQuery、Proxy 疎通、行フィルタ／列マスクが実 SQL として効くか） | pytest + 実 BQ テスト用データセット / Dataform assertions / `terraform test (apply)`・Terratest | 実依存（dev） | merge 後 dev |
 | **契約** | 提供 API ↔ 消費 BU、Dataform 出力 ↔ API 参照のスキーマ整合 | Schemathesis / Pact / data contract 突合 | スキーマ／dev API | PR（lint）＋ dev（検証） |
-| **E2E・スモーク** | APIM→App Service→BigQuery の全経路、認可の代表シナリオ | pytest / API 呼び出し | stg | stg 昇格後 |
+| **E2E・スモーク** | APIM→ARO→BigQuery の全経路、認可の代表シナリオ | pytest / API 呼び出し | stg | stg 昇格後 |
 | **合成監視・ヘルス** | 本番での非破壊な疎通・SLO 監視 | App Insights Standard availability test / OpenTelemetry | prod | prod 常時 |
 
 > 比率の目安（テスト本数でなく投資配分の感覚）: 静的＝常時 / 単体 20–25% / 統合 40–45% / 契約 20% / E2E 10% / 合成 5%。
@@ -48,7 +48,7 @@ flowchart TB
     PR["PR（ビルド前）<br/>静的 + 単体 + 契約lint<br/>実依存なし・高速"]
     BUILD["Build once（成果物確定）<br/>同一digest/同一commitを1回固定<br/>SBOM・脆弱性スキャン"]
     DEV["Deploy → dev<br/>統合（実BQ・Proxy疎通）+ 契約検証<br/>Schemathesis / assertions"]
-    STG["Promote → stg<br/>smoke + E2E（APIM全経路）<br/>slot swap-with-preview"]
+    STG["Promote → stg<br/>smoke + E2E（APIM全経路）<br/>blue/green（Route切替）"]
     PROD["Promote → prod<br/>synthetic monitoring + health<br/>非破壊readのみ"]
 
     PR --> BUILD --> DEV
@@ -190,7 +190,7 @@ flowchart LR
 ### 基本の仕組み（IaC のピラミッド）
 
 1. **静的解析** — `terraform fmt` / `terraform validate` / `tflint`（プロバイダ固有ミス・非推奨構文）。クラウド API を叩かないので最速。pre-commit と CI 両方に。
-2. **ポリシー as code** — **Checkov**（最広）／**Trivy**（旧 tfsec）／**OPA conftest**（plan JSON を Rego で評価）。社内制約（Container Apps/AKS 不可、Azure 永続ストアは Azure SQL のみ、外部通信は Proxy 経由のみ等）を plan JSON のゲートとして機械的に止める。
+2. **ポリシー as code** — **Checkov**（最広）／**Trivy**（旧 tfsec）／**OPA conftest**（plan JSON を Rego で評価）。社内制約（実行基盤は承認済みの ARO に限定〔旧「コンテナ不可」制約は撤廃〕、Azure 永続ストアは Azure SQL のみ、外部通信は Proxy 経由のみ等）を plan JSON のゲートとして機械的に止める。
 3. **ユニット（`terraform test`、`command = plan`）** — リソースを作らず構成ロジック・変数補間・条件を検証。**mock providers（1.7+）で認証情報なしに plan テスト**が書ける。
 4. **統合（`terraform test`、`command = apply` ／ Terratest）** — ephemeral（使い捨て）環境に実 apply → assert → 自動 destroy。実 API 挙動の検証が要るときは Terratest（Go）。
 
@@ -246,12 +246,12 @@ flowchart LR
 | **PR** | PR push（paths で変更分のみ matrix） | `compile` ＋ `test`（ユニット）＋ 契約突合 | ruff・型 ＋ `pytest -m "unit or contract"` ＋ Spectral（3.1/3.0 両方）＋ Trivy・Snyk | `fmt`・`validate`・`tflint` ＋ Checkov・OPA ＋ `terraform test (plan, mock)` | main 保護・squash・必須レビュー（実依存なし） |
 | **Build once** | main マージ | コンパイル成果物を固定 | **コンテナ digest を 1 回ビルド**しレジストリへ。SBOM・脆弱性スキャン | 環境非依存の最終 plan を成果物化 | OIDC（registry push のみの最小権限） |
 | **Deploy → dev** | 自動 | `run --dry-run` → `run --default-database=dev` | 同一 digest を dev へ → `pytest -m integration`（実 BQ・**Proxy 疎通の実機検証**）＋ Schemathesis（dev URL, read-only）＋ Pact provider 検証 | 同一 plan を dev に `apply` ＋ ephemeral で実リソース疎通 | OIDC（GitHub→GCP=WIF / GitHub→Azure=federated、dev 限定 `sub`・最小権限） |
-| **Promote → stg** | **承認ゲート** | 同一 commit を `--default-database=stg` で `run` ＋ 実データ assertions | **同一 digest を staging slot へ → swap-with-preview でスモーク（APIM 全経路・認可境界）→ 完了 swap** | 同一 commit/plan を stg に `apply` | GitHub Environments(stg): required reviewers ＋ deployment branches=main |
-| **Promote → prod** | **承認ゲート（＋ wait timer 任意）** | 同一 commit を `--default-database=prod` で `run` | 同一 digest を prod staging slot → swap-with-preview → スモーク → swap（失敗時は**再 swap で即ロールバック**） | 同一 commit/plan を prod に `apply` | GitHub Environments(prod): required reviewers（起票者除外）＋ branch 制限 |
+| **Promote → stg** | **承認ゲート** | 同一 commit を `--default-database=stg` で `run` ＋ 実データ assertions | **同一 digest を stg ARO へ blue/green（Route 切替）でデプロイ → 切替前にスモーク（APIM 全経路・認可境界）→ Route 切替で本稼働** | 同一 commit/plan を stg に `apply` | GitHub Environments(stg): required reviewers ＋ deployment branches=main |
+| **Promote → prod** | **承認ゲート（＋ wait timer 任意）** | 同一 commit を `--default-database=prod` で `run` | 同一 digest を prod ARO へ blue/green（Route 切替）→ 切替前スモーク → Route 切替（失敗時は**Route を旧版へ戻して即ロールバック**） | 同一 commit/plan を prod に `apply` | GitHub Environments(prod): required reviewers（起票者除外）＋ branch 制限 |
 | **デプロイ後（常時）** | 各昇格後・定期 | freshness／volume／schema drift 監視（Soda 等） | **synthetic monitoring（主要 5–10 トランザクション）＋ health check** | drift 検知（plan diff 定期チェック） | — |
 
 補足:
-- **App Service の health check パス**は、PEP/PDP・BigQuery クライアント（Proxy 経由）・Open-GIM 到達など critical 依存を実際に確認する内容にすると、最優先論点の疎通検証を兼ねられる。
+- **ARO の readiness / liveness probe**は、PEP/PDP・BigQuery クライアント（Proxy 経由）・Open-GIM 到達など critical 依存を実際に確認する内容にすると、最優先論点の疎通検証を兼ねられる。
 - **prod の合成監視**は、Azure の **URL ping test が 2026/09/30 廃止**・multi-step web test 非推奨のため、最初から **Standard availability test（または Playwright ベースの `TrackAvailability`）** で組む。書き込み系の偽トランザクションは行わない（非破壊 read のみ）。
 - 統合テスト用のクラウド権限は本番デプロイ用と別の最小権限を切り、OIDC の `sub` を該当 environment（例 `dev`）に固定する。
 
@@ -333,6 +333,6 @@ flowchart LR
 - GitHub OIDC（keyless）— https://docs.github.com/en/actions/concepts/security/openid-connect
 - GCP keyless authentication from GitHub Actions — https://cloud.google.com/blog/products/identity-security/enabling-keyless-authentication-from-github-actions
 - DORA Deployment automation / Capabilities — https://dora.dev/capabilities/deployment-automation/ / https://dora.dev/capabilities/
-- Azure App Service deployment slots / best practices / health check — https://learn.microsoft.com/azure/app-service/deploy-staging-slots / https://learn.microsoft.com/azure/app-service/deploy-best-practices / https://learn.microsoft.com/azure/app-service/monitor-instances-health-check
+- Azure Red Hat OpenShift / OpenShift Deployments（rolling・blue-green・canary）/ アプリのヘルス（probe）— https://learn.microsoft.com/en-us/azure/openshift/ / https://docs.openshift.com/container-platform/latest/applications/deployments/deployment-strategies.html / https://docs.openshift.com/container-platform/latest/applications/application-health.html
 - Azure Monitor Application Insights availability（Standard test）— https://learn.microsoft.com/en-us/azure/azure-monitor/app/availability
 - GitHub Environments 保護ルール / デプロイ承認 — https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments

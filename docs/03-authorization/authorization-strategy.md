@@ -78,6 +78,6 @@
 2. **③SQL ライク条件の統制方法**: 自由 SQL ではなく、レビュー可能なポリシー定義フォーマットに倒す。**エンジンは PyCasbin（埋め込み）で確定**（`pycasbin/`）。外部 PDP（Cerbos/OPA）は将来オプション。
 3. **⑤T ユーザー／AI エージェントの認可**: OBO かサービス ID 固定かの切り分け。
 4. **④デフォルト権限の言い換え**: 「入口開放＋行列制御常時適用」で合意。
-5. ランタイムは App Service 主・Functions 補助で確定。**言語・FW は Python / FastAPI に確定**（`../02-architecture/runtime-framework-decision.md`）。
+5. ランタイムは **ARO（Azure Red Hat OpenShift）上のコンテナで確定**（2026-06 に App Service から切替。補助バッチのランタイムは未決）。**言語・FW は Python / FastAPI に確定**（`../02-architecture/runtime-framework-decision.md`）。
 
 ---

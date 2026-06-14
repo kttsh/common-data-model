@@ -67,6 +67,7 @@
 | 略語 | 正式名 | 説明 |
 |---|---|---|
 | APIM | Azure API Management | Azure の API ゲートウェイ |
+| ARO | Azure Red Hat OpenShift | Azure 上のマネージド OpenShift（Kubernetes / コンテナ基盤）。本基盤の API 実行ランタイム（2026-06 に App Service から切替） |
 | SA | Service Account | サービスアカウント |
 | IAM | Identity and Access Management | ID・アクセス管理 |
 | LRU | Least Recently Used | 古いものから捨てるキャッシュ方式 |

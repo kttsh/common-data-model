@@ -8,14 +8,14 @@
 
 | 項目 | 決定 |
 |---|---|
-| **採用アーキテクチャ** | **案A: 最小構成（App Service + APIM 組込みキャッシュ + プロセス内 LRU + BigQuery ビュー）** |
-| バックエンドランタイム | Azure App Service（Linux 想定） |
+| **採用アーキテクチャ** | **案A: 最小構成（ARO 上の FastAPI コンテナ + APIM 組込みキャッシュ + プロセス内 LRU + BigQuery ビュー）** |
+| バックエンドランタイム | Azure Red Hat OpenShift（ARO）上のコンテナ（Linux）。2026-06 に App Service から切替 |
 | **言語・フレームワーク** | **Python / FastAPI**（D1 確定 → `runtime-framework-decision.md`） |
 | API ゲートウェイ | 既存共有 Azure API Management |
-| キャッシュ | APIM 組込み（内部）キャッシュ + App Service プロセス内 LRU |
+| キャッシュ | APIM 組込み（内部）キャッシュ + コンテナ（Pod）内 LRU |
 | データソース | BigQuery（Proxy 経由アクセス） |
 | 認証 | Entra ID（OIDC + JWT、SA は Client Credentials / Managed Identity） |
-| 認可 | App Service 内で ABAC（行レベル: SQL WHERE 注入、列レベル: 整形時マスク） |
+| 認可 | API（ARO 上の FastAPI）内で ABAC（行レベル: SQL WHERE 注入、列レベル: 整形時マスク） |
 | ユーザー属性参照 | Open-GIM（社内ユーザーリポジトリ。認可属性の正本。実体がオンプレ SQL Server と同一かは未確定論点。到達経路は ExpressRoute 想定） |
 | 監査ログ | Azure Log Analytics（Datadog 併設可） |
 
@@ -38,7 +38,7 @@
 
 | # | 制約 | 影響 |
 |---|---|---|
-| C1 | **バックエンドランタイムは Azure App Service または Functions のみ**（Container Apps / AKS 不可） | メイン API は App Service 一択。Functions は補助的に併用候補 |
+| C1 | **バックエンドランタイムは Azure Red Hat OpenShift（ARO）上のコンテナ**（2026-06 改定。旧制約「App Service / Functions のみ・Container Apps / AKS 不可」は撤廃） | メイン API は ARO 上の FastAPI コンテナ。補助バッチのランタイム（ARO の CronJob/Job か Azure Functions か）は未決 |
 | C2 | **Azure Cache for Redis / Azure Managed Redis は利用不可（社内承認上の制約）** | APIM の外部キャッシュ機構が使えず、組込みキャッシュ＋プロセス内キャッシュに限定 |
 | C3 | **Azure 側永続ストアは Azure SQL のみ承認済**。Cosmos DB / PostgreSQL Flexible Server 等は不可 | 案C（Azure ホットストア型）を将来採用する場合の選択肢が Azure SQL に限定される |
 
@@ -46,7 +46,7 @@
 
 | # | 不明点 | 影響 |
 |---|---|---|
-| U1 | App Service のプラン制約（Basic/Standard/Premium、Linux/Windows） | プロセス内キャッシュ容量、スケール戦略、コールドスタート挙動に影響 |
+| U1 | ARO クラスタ構成（ノードプール SKU・台数、Pod リソース上限、HPA 設定、共有/専用クラスタの方針） | プロセス内キャッシュ容量、スケール戦略、起動挙動に影響 |
 | U2 | Proxy 仕様（認証方式・対応プロトコル・BigQuery クライアント疎通可否） | 案A 成立性の根幹。設計初期で実機検証必須 |
 | U3 | 既存 APIM の Subscription/Product 運用ルール | マルチテナント設計の前提 |
 | U4 | Open-GIM（社内ユーザーリポジトリ）の認可属性スキーマ。実体がオンプレ SQL Server と同一かを含め確認 | ABAC ポリシー設計の入力 |
@@ -66,13 +66,13 @@
    - スロットリング / Subscription 管理
    - 組込みキャッシュ(短期TTL, 共通レスポンス向け)
         │
-        ▼
-[Azure App Service (Linux)]
+        ▼  (private ingress / Route, 内部 LB)
+[ARO: FastAPI コンテナ (Pod)]
    - OpenAPI 3.1 準拠 REST API
    - プロセス内 LRU キャッシュ (属性, マスタ, スキーマ)
-   - ABAC 認可ロジック (PyCasbin 埋め込み PDP)
+   - ABAC 認可ロジック (PyCasbin 埋め込み PDP。将来は同一 Pod の PDP サイドカーも可)
    - BigQuery クライアント (接続プール)
-        │
+        │  (egress lockdown / UDR で社内 Proxy 経由)
         ├─→ [Open-GIM 属性ストア] (ExpressRoute) ← ユーザー属性
         │
         └─→ [BigQuery] (Proxy 経由) ← 通常ビュー / 一部マテビュー
@@ -80,12 +80,12 @@
 
 ### 3.2 メリット
 
-- **追加 Azure サービスゼロでスタート可能**。新規サービスの社内承認・コスト・運用学習コストを最小化
-- **責任境界が単純**: 全ロジックが App Service に集約され、トラブルシューティングと監査が容易
-- **App Service は枯れた技術**: IaC（Bicep/Terraform）、デプロイスロット、自動スケール、カスタムドメイン、診断設定が成熟
+- **ロジックを単一サービス（API）に集約**: 全ロジックが ARO 上の FastAPI コンテナに集約され、トラブルシューティングと監査が容易
+- **コンテナ標準の運用に乗れる**: イメージの build-once / promote（同一 digest を dev→stg→prod）、HPA による自動スケール、rolling / blue-green（Route 切替）/ canary が OpenShift 標準で揃う
+- **サイドカー構成が可能**: 外部 PDP（Cerbos / OPA）を同一 Pod のサイドカーとして同居でき、ネットワークホップを足さずにポリシー一元化へ拡張できる（App Service では不可だった）
 - **行・列レベル制御を一箇所で管理**: 中央チームのガバナンス責務範囲が明確
 - **第2段階以降への漸進的拡張が容易**: 必要に応じて BI Engine + マテビュー（案B 要素）や Azure SQL ホットストア（案C 要素）を個別追加できる
-- **L8（iPaaS 境界）が引きやすい**: APIM = 入口統制、App Service = ビジネスロジック、将来の iPaaS = 非同期統合の三層が明確
+- **L8（iPaaS 境界）が引きやすい**: APIM = 入口統制、ARO = ビジネスロジック、将来の iPaaS = 非同期統合の三層が明確
 
 ### 3.3 デメリット / 既知リスク
 
@@ -94,9 +94,10 @@
 | R1 | **キャッシュミス時のレイテンシが BigQuery 直撃** | (a) 頻出クエリはマテビュー化、(b) BigQuery 側パーティション/クラスタリング最適化、(c) ミス時 SLO を別途定義（例: 95%tile 3 秒以内） |
 | R2 | **APIM 組込みキャッシュは RLS 適用済レスポンスでヒット率が低い** | キャッシュは「共通参照系（マスタ・スキーマ・公開メタデータ）」中心に限定。RLS 適用エンドポイントはキャッシュ対象外と割り切る |
 | R3 | **APIM 組込みキャッシュは揮発性・APIM アップデート時クリア** | 長期キャッシュ前提の設計をしない。TTL は短く（秒〜分） |
-| R4 | **プロセス内キャッシュはインスタンス間で共有されない** | スケールアウト想定エンドポイントでは、共有が必要なデータをキャッシュしない。属性キャッシュは TTL を短く（30〜60 秒） |
+| R4 | **プロセス内キャッシュは Pod 間で共有されない** | スケールアウト想定エンドポイントでは、共有が必要なデータをキャッシュしない。属性キャッシュは TTL を短く（30〜60 秒） |
 | R5 | **Proxy 障害時に API も停止**（ホットパスが BigQuery 依存） | Proxy 冗長性確認。BigQuery クライアントのリトライ/タイムアウト設計を厳密化 |
 | R6 | **属性参照のため Open-GIM へ毎リクエスト問い合わせが発生** | プロセス内 LRU で属性をキャッシュ（TTL 短め）。Open-GIM 側に Read レプリカがあれば活用 |
+| R7 | **ARO（マネージド OpenShift）の運用・コスト負荷**（クラスタ管理・ノード費用・OpenShift 習熟） | マネージドサービスで運用は軽減されるが、App Service より基盤運用の比重は増す。共有/専用クラスタの方針・ノード最小構成・コスト上限を初期に確定。クラスタ更新やノード保守の運用フローも整備 |
 
 ### 3.4 設計上の確定事項
 
@@ -104,12 +105,12 @@
 |---|---|
 | L1 複雑ロジック配置 | **BigQuery ビュー（基礎）+ 必要に応じてマテビュー（頻出統合モデル）+ API 層（ユーザー文脈依存の組み立て）** |
 | L2 キャッシュ配置 | **APIM 組込み + プロセス内 LRU のみ**。Redis 系は将来 C2 制約が緩和されるまで採用しない |
-| L3 行・列レベル制御 | **App Service 内 ABAC**。エンジンは **PyCasbin（埋め込み）で確定**（→ `../04-research/abac-authz-library-comparison.md`、`../03-authorization/pycasbin/`）。外部 PDP（Cerbos/OPA）は将来オプション。BigQuery RLS は補助的にも使わない（二重管理回避） |
-| L4 ランタイム | **App Service（メイン API）+ Functions（任意で補助バッチ: マテビューウォーマー、Webhook 等）** |
+| L3 行・列レベル制御 | **API（ARO 上の FastAPI）内 ABAC**。エンジンは **PyCasbin（埋め込み）で確定**（→ `../04-research/abac-authz-library-comparison.md`、`../03-authorization/pycasbin/`）。外部 PDP（Cerbos/OPA）は将来オプションで、ARO では**同一 Pod のサイドカー**として同居できる（別ホスト＋ホップを足さずに済む）。BigQuery RLS は補助的にも使わない（二重管理回避） |
+| L4 ランタイム | **ARO 上の FastAPI コンテナ（メイン API）**。補助バッチ（マテビューウォーマー、Webhook 等）のランタイムは**未決**（ARO の CronJob/Job か Azure Functions か） |
 | L5 API 設計規約 | OpenAPI 3.1 準拠、リソース指向 REST、JSON レスポンス。具体規約（JSON:API / OData / 独自）は別途比較 |
 | L6 OpenAPI 連携 | スキーマファースト推奨（中央チームのガバナンスと AI 支援開発の双方に有利） |
 | L7 SA 属性管理 | SQL Server 同居案を第一候補に検討（人間ユーザーと同じ属性ストアで一元管理） |
-| L8 iPaaS 境界 | APIM=入口統制、App Service=ビジネスロジック、iPaaS=非同期統合・既存システム連携 |
+| L8 iPaaS 境界 | APIM=入口統制、ARO=ビジネスロジック、iPaaS=非同期統合・既存システム連携 |
 
 ---
 
@@ -120,7 +121,7 @@
 #### 構成概要
 
 ```
-[User/SA] → APIM(組込みキャッシュ) → App Service
+[User/SA] → APIM(組込みキャッシュ) → ARO: FastAPI コンテナ
                                      ├─ JWT検証, ABAC
                                      ├─ SQL Server (属性)
                                      └─ BigQuery (Proxy)
@@ -134,13 +135,13 @@
 
 - BI Engine の in-memory 加速で、キャッシュミス時でも数百 ms が狙える
 - マテビューは事前計算結果を周期的にキャッシュし、繰り返しクエリのレイテンシを大幅低減（ゼロメンテで最新データ）
-- App Service 側のコードがシンプル（生 SQL を薄く保てる）
+- API（ARO）側のコードがシンプル（生 SQL を薄く保てる）
 - Azure 側に新規サービス追加なし（案A と同じ Azure リソース構成）
 
 #### デメリット
 
 - BI Engine の予約コスト・サイズ管理が運用負荷として乗る
-- 行レベル制御の二重管理リスク（BigQuery RLS と App Service ABAC）
+- 行レベル制御の二重管理リスク（BigQuery RLS と API 層 ABAC）
 - Proxy 依存度が最大（ホットパスが必ず BigQuery を叩く）→ Proxy 障害＝サービス停止
 - ベンダー依存度が GCP 側に偏る
 - BigQuery エディションによっては BI Engine / マテビューの利用に制約あり
@@ -163,9 +164,9 @@
 #### 構成概要
 
 ```
-[BigQuery]  ←─ Functions(Timer) ──→ [Azure SQL Database]
+[BigQuery]  ←─ 同期ジョブ(Timer) ──→ [Azure SQL Database]
                                           ↑
-[User/SA] → APIM → App Service ───────────┘
+[User/SA] → APIM → ARO: FastAPI コンテナ ──┘
                        ├─ JWT検証, ABAC
                        └─ SQL Server (属性)
 ```
@@ -179,7 +180,7 @@
 - **L9 Proxy 問題をホットパスから排除**。Proxy 障害時もユーザー API は応答可能（鮮度劣化のみ）
 - Azure SQL 標準の RLS / ビューを活用でき、ABAC との二段構えで安全
 - 将来のデータレジデンシー要件にも備えられる
-- Functions の補助利用が必須となり、「App Service or Functions のみ」制約下で **両方を最大活用できる唯一の案**
+- 同期ジョブ（ARO の CronJob/Job または Azure Functions）の活用余地が大きい
 
 #### デメリット
 
@@ -215,8 +216,8 @@
 | 初期構築コスト | 小 | 小〜中 | 大 |
 | 運用負荷 | 小 | 中（BQ最適化） | 大（同期基盤） |
 | 行・列制御の実装容易性 | ○ | △（二重管理） | ◎ |
-| 追加 Azure サービス | なし | なし | Azure SQL + Functions |
-| Functions 活用余地 | 限定的 | 補助 | 必須（同期役） |
+| 追加サービス（ARO 基盤に対する増分） | なし | なし | Azure SQL（+ 同期ジョブ） |
+| 補助ジョブ（CronJob/Functions）活用余地 | 限定的 | 補助 | 必須（同期役） |
 | 第2段階以降の拡張性 | ○ | △ | ◎ |
 | ベンダーロックイン | 中 | GCP 高 | Azure 高 |
 | 現制約下での適合度 | **◎** | ○ | △（重い） |
@@ -226,7 +227,7 @@
 ## 6. 採用判断の理由
 
 1. **現フェーズは「API 提供の実現」が直近ミッション**。最小サービス構成で立ち上げ、運用知見を蓄積する案A が最もリスクが低い
-2. **追加 Azure サービスを使わない構成は社内承認パスが最短**。C2/C3 で見られる承認制約環境では、これ自体が大きな価値
+2. **コンテナ標準の運用に乗ることで、スケール・デプロイ・サイドカー拡張の自由度が上がる**。ARO は承認済みの実行基盤であり、build-once / promote（同一 image digest を dev→stg→prod）とも素直に噛み合う
 3. **案A は将来の案B/案C 要素を部分採用できる出発点**。マテビュー追加（案B 要素）も Azure SQL ホットストア追加（案C 要素）も後付け可能
 4. **L9 Proxy 依存リスクはあるが、Proxy はどの案でも必要**（案C のバッチ側にも必要）。案A 固有の問題ではない
 5. **「Redis 不可」「Azure サービス追加に承認必要」という社内環境は、シンプル構成と相性が良い**
@@ -238,7 +239,7 @@
 | トリガー | 候補となる選択肢 |
 |---|---|
 | Redis 系（Azure Managed Redis 等）が利用可能になった | 案A + Redis 外部キャッシュ追加。RLS 適用済レスポンスのキャッシュも可能になり、レイテンシ改善大 |
-| Container Apps / AKS が利用可能になった | バックエンドランタイム再評価。OPA サイドカー構成や、より柔軟なスケール戦略が可能に |
+| ARO の運用・コストが見合わない / 単純構成で十分と判明 | App Service / Functions 構成（旧 C1）への回帰を再評価 |
 | Cosmos DB が利用可能になった | 案C 系の選択肢拡大。Azure SQL より低レイテンシのホットストア構築が可能に |
 | Proxy 仕様が NG または不安定と判明（U2） | 案C への部分移行を緊急検討。ホットパスを Azure 側に逃がす必要 |
 | データレジデンシー要件が発生 | 案C への段階移行 |
@@ -254,8 +255,8 @@
 
 | # | 項目 | 重要度 | 不明事項 ID |
 |---|---|---|---|
-| 1 | **Proxy 仕様確認**（認証方式・対応プロトコル・BigQuery クライアント疎通実機検証） | **最高** | U2 |
-| 2 | **App Service プラン制約の確認**（Basic / Standard / Premium、Linux/Windows） | 高 | U1 |
+| 1 | **Proxy 仕様確認**（認証方式・対応プロトコル・BigQuery クライアント疎通実機検証。ARO の egress lockdown / UDR で社内 Proxy を通せるか含む） | **最高** | U2 |
+| 2 | **ARO クラスタ構成の確認**（ノードプール SKU・台数、Pod リソース、HPA、Route/内部 LB と APIM 連携、private cluster 方針） | 高 | U1 |
 | 3 | **既存 APIM の Subscription / Product 運用ルール確認** | 高 | U3 |
 | 4 | **Open-GIM（認可属性ストア）スキーマ調査**（実体・到達経路がオンプレ SQL Server と同一かの確認含む） | 高 | U4 |
 | 5 | BigQuery エディション・予約状況確認 | 中 | - |
@@ -265,20 +266,20 @@
 
 | # | 論点 | 内容 |
 |---|---|---|
-| D1 | 言語・FW 選定 | **【確定】Python / FastAPI を採用**（→ `runtime-framework-decision.md`）。AI 支援開発相性・エコシステム成熟度・App Service ネイティブ対応（2026 年強化）・BigQuery/Entra/認可ライブラリ成熟が決め手。Litestar / .NET 9 / Go・Huma は再検討トリガー付きで見送り |
+| D1 | 言語・FW 選定 | **【確定】Python / FastAPI を採用**（→ `runtime-framework-decision.md`）。AI 支援開発相性・エコシステム成熟度・コンテナ運用（ARO）との親和性・BigQuery/Entra/認可ライブラリ成熟が決め手。Litestar / .NET 9 / Go・Huma は再検討トリガー付きで見送り |
 | D2 | ABAC 実装方式 | **【確定】PyCasbin（埋め込み PDP）を採用**（→ `../04-research/abac-authz-library-comparison.md`、`../03-authorization/pycasbin/`）。外部 PDP（Cerbos/OPA）は将来オプション、`row_filter` 生成・列マスク・BigQuery 翻訳層は自前で補完 |
 | D3 | API 設計規約（L5） | JSON:API / OData / 独自 のページング・フィルタ表現比較 |
 | D4 | OpenAPI 連携方式（L6） | スキーマファースト vs コードファースト |
 | D5 | バージョニング戦略 | URI path（/v1/...）vs Header（Accept-Version） |
 | D6 | プロセス内キャッシュライブラリ | Python 前提（D1 確定済み）。cachetools / aiocache 等を比較 |
 | D7 | 監視・トレーシング | Application Insights / Log Analytics / Datadog の役割分担 |
-| D8 | デプロイ戦略 | デプロイスロット運用、Blue/Green、カナリア |
+| D8 | デプロイ戦略 | OpenShift の rolling / blue-green（Route 切替）/ canary。build-once 成果物（同一 image digest）の昇格 |
 
 ### 8.3 PoC スコープ案
 
 最小 PoC で検証すべき要素:
 
-1. APIM → App Service → BigQuery（Proxy 経由）の疎通とレイテンシ計測
+1. APIM → ARO（FastAPI コンテナ）→ BigQuery（Proxy 経由）の疎通とレイテンシ計測
 2. Entra ID JWT 検証 → SQL Server 属性参照 → BigQuery クエリの一連フロー
 3. ABAC による行レベル WHERE 注入の動作
 4. APIM 組込みキャッシュ + プロセス内 LRU のキャッシュヒット率測定
@@ -294,3 +295,4 @@
 | 2026-06-03 | 1.1 | 言語・FW を Python / FastAPI に確定（D1 クローズ、`runtime-framework-decision.md` 参照） |
 | 2026-06-04 | 1.2 | L3/D2 の認可エンジンを **PyCasbin（埋め込み）に確定**（外部 PDP は将来オプション）。認可属性ストアの正本呼称を **Open-GIM** に統一 |
 | 2026-06-11 | 1.3 | フロントマター（ステータス/Related）を除去、D6 を Python 前提に更新 |
+| 2026-06-14 | 1.4 | **バックエンドランタイムを App Service から ARO（Azure Red Hat OpenShift）上のコンテナへ切替**。C1 を改定（旧「App Service/Functions のみ・コンテナ不可」を撤廃）。構成図・メリット/リスク（R7 追加）・確定事項（L3 サイドカー可、L4 補助バッチ未決）・比較表・採用判断・再検討トリガー・調査項目・PoC を ARO 前提に更新 |
